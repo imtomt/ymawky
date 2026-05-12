@@ -670,6 +670,9 @@ Lfilename_loop:
     cmp w3, #' ' ; is it a space?
     b.eq Lfilename_done ; we're done once we reach a space
 
+    cmp w3, #'?' ; start of query
+    b.eq Lfilename_done ; query unsupported, so ignore and search for filename only instead of <filename>?<query>
+
     cmp w3, #'\r'
     b.eq Lno_match
 
