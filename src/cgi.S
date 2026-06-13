@@ -3,6 +3,18 @@
 // this file is ugly and long as fuck. TODO: clean it up, split into multiple
 // different files.
 
+/*
+ * TODO
+ * use pipe2, put some stuff in .bss, 2 variables stdout_pipe and stdin_pipe
+ * instead of the 4 currently, since pipe2() takes an array of 2 ints.
+ * use dup3 instead of dup2.
+ * use CLOEXEC (0x80000) for pipe2()
+ * parent still closes stdin read (first 4 bytes of stdin_pipe) and stdout write
+ * (last 4 bytes of stdout_pipe, so [stdout_pipe, #4]).
+ * child can just use dup3([stdin_pipe], 0, 0) and dup3([stdout_pipe, #4], 1, 0)
+ * instead of needing to close their pipes manually. thanks, CLOEXEC!
+ */
+
 .global cgi
 
 .global script_ct
@@ -197,13 +209,14 @@ cgi_parent:
     adr_l x0, Lcgi_sigalrm_handler
     sub sp, sp, #32
     str x0, [sp, #0]
-    str x0, [sp, #8]
+    str wzr, [sp, #8]
     str wzr, [sp, #16]
-    str wzr, [sp, #20]
-    mov x8, SYS_sigaction
+
+    mov x8, SYS_rt_sigaction
     mov w0, #SIGALRM
     mov x1, sp
     mov x2, #0
+    mov x3, #8
     svc #0
     add sp, sp, #32
     b.cs L500
