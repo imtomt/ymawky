@@ -21,7 +21,7 @@
 .global script_ct_len_val
 
 .data
-.align 3
+.balign 8
 cgi_read_timer:
     .quad 0
     .long 0
@@ -31,13 +31,13 @@ cgi_read_timer:
     .long 0
     .long 0
 
-.align 4
+.balign 16
 cgi_dir: .ascii DOCROOT
          .ascii CGI_DIR
 .equ cgi_dir_len, . - cgi_dir
 cgi_dir_len_val: .quad cgi_dir_len
 
-.align 4
+.balign 16
 argv: .quad 0
       .quad 0
 
@@ -67,26 +67,23 @@ script_conn: .ascii "connection:"
 
 script_ct: .ascii "content-type:"
 .equ script_ct_len, . - script_ct
-.align 3
+.balign 8
 script_ct_len_val: .quad script_ct_len // we need this so we can use it in
                                        // cgi_env.S ugh
 
-.align 2
+.balign 4
 peer_addr_len:.quad 16
 
 .bss
-.align 4
+.balign 8
 child_pid:    .skip 8
 peer_addr:    .skip 16
-cgi_stdin_r:  .skip 4
-cgi_stdin_w:  .skip 4
-cgi_stdout_r: .skip 4
-cgi_stdout_w: .skip 4
+stdin_pipe:   .skip 8
+stdout_pipe:  .skip 8
 status:       .skip 4
 cgi_buf:      .skip BUF_SIZE
 
 .text
-.align 2
 // main CGI function
 // inputs
 // none -- uses global data
@@ -119,39 +116,50 @@ cgi:
     b.cs L500
 
     // SYS_pipe()
-    // NOTE: the pipe() syscall, unlike the libc wrapper, takes no arguments
-    mov x8, #SYS_pipe
+    mov x8, #SYS_pipe2
+    adr_l x0, stdin_pipe
+    mov x1, O_CLOEXEC
     svc #0
     b.cs L500
     str_l w0, cgi_stdin_r
     str_l w1, cgi_stdin_w
 
-    mov x8, #SYS_pipe
+    mov x8, #SYS_pipe2
+    mov x0, stdout_pipe
+    mov x1, O_CLOEXEC
     svc #0
     b.cs L500
     str_l w0, cgi_stdout_r
     str_l w1, cgi_stdout_w
 
 about_to_fork:
-    // SYS_fork()
+    // SYS_clone()
     mov x8, SYS_fork
+    mov x0, SIGCHLD
+    mov x1, #0
+    mov x2, #0
+    mov x3, #0
+    mov x4, #0
     svc #0
-    b.cs L500 // just bail if fork fails
+    cmn x0, #4095
+    b.hi L500 // just bail if fork fails
 
-    cmp x1, #1 // are we the child?
-    b.eq cgi_child
+    // are we the child?
+    cbz x0, child
+
     // if not, then we're the...
 cgi_parent:
     str_l x0, child_pid // store the pid of the child process XXX
     // we can close() the unused fds
     // close stdin_r
     mov x8, SYS_close
-    ldr_l w0, cgi_stdin_r
+    ldr w0, stdin_pipe // offset 0 = read end
     svc #0
     b.cs L500
     // close stdout_w
     mov x8, SYS_close
-    ldr_l w0, cgi_stdout_w
+    adr_l x1, stdout_pipe
+    ldr w0, [x1, #4] // offset 4 = write end
     svc #0
     b.cs L500
 
@@ -471,12 +479,14 @@ Lloop_end:
 
 // ok fine we're a kid! yay! *plays on a swingset*
 cgi_child:
+    //[cgi_stdin_pipe] (offset 0) = read end, [cgi_stdin_pipe, #4] (offset 4) = write end.
     // we've gotta close() unused fds
     // close stdin_w
     mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
     svc #0
     b.cs Lchild_error
+
     // close stdout_r
     mov x8, SYS_close
     ldr_l w0, cgi_stdout_r
@@ -484,29 +494,18 @@ cgi_child:
     b.cs Lchild_error
 
     // duplicate the file descriptors to be actually stdin/out
-    mov x8, SYS_dup2
-    ldr_l w0, cgi_stdin_r // pipe fd
-    mov x1, #0 // stdin
+    mov x8, SYS_dup3
+    ldr w0, stdin_pipe
+    mov w1, #0
+    mov w2, #0
     svc #0
-    b.cs Lchild_error
 
-    mov x8, SYS_dup2
-    ldr_l w0, cgi_stdout_w // pipe fd
-    mov x1, #1 // stdout
+    mov x8, SYS_dup3
+    adr_l x1, stdout_pipe
+    ldr w0, [x1, #4]
+    mov w1, #1
+    mov w2, #0
     svc #0
-    b.cs Lchild_error
-
-    // now that cgi_stdin/out_r/w has been duplicated to just stdin/out, we can
-    // close the fds from pipe.
-    mov x8, SYS_close
-    ldr_l w0, cgi_stdin_r
-    svc #0
-    b.cs Lchild_error
-
-    mov x8, SYS_close
-    ldr_l w0, cgi_stdout_w
-    svc #0
-    b.cs Lchild_error
 
     // we gotta chdir into the right directory
     mov x8, #12 // SYS_chdir
@@ -667,12 +666,14 @@ kill_kid:
     cbz x1, 1f // if child_pid is 0, it hasn't set yet. skip the kill. we don't
                // want to kill PID 0, since that would kill ymawky. lol
 
+//[cgi_stdin_pipe] (offset 0) = read end, [cgi_stdin_pipe, #4] (offset 4) = write end.
     mov x8, SYS_close
-    ldr_l w0, cgi_stdout_r
+    ldr w0, stdout_pipe
     svc #0
 
     mov x8, SYS_close
-    ldr_l w0, cgi_stdin_w
+    adr_l x1, stdin_pipe
+    mov w0, [x1, #4]
     svc #0
 
     mov x8, SYS_kill
