@@ -4,48 +4,48 @@
 .global write_with_chunk_length
 
 .data
-;; This is used to build the Directory Listing html page:
-;; <!DOCTYPE html>
-;; <html><head><title>DIRECTORY</title><head>
-;; <body><h1>Index of DIRECTORY</h1>
-;; <p><a href="ELEMENT1">ELEMENT1</a></p>
-;; <p><a href="ELEMENT2">ELEMENT2</a></p>
-;; ...
-;; </body></html>
-;; (although there aren't newlines in the actual data to save space)
+// This is used to build the Directory Listing html page:
+// <!DOCTYPE html>
+// <html><head><title>DIRECTORY</title><head>
+// <body><h1>Index of DIRECTORY</h1>
+// <p><a href="ELEMENT1">ELEMENT1</a></p>
+// <p><a href="ELEMENT2">ELEMENT2</a></p>
+// ...
+// </body></html>
+// (although there aren't newlines in the actual data to save space)
 listing_head_p1: .ascii "<!DOCTYPE html><html><head><style>body{background:#1a1a2e;color:#c9b0ff;font-family:\"Arial Rounded MT Bold\",\"Helvetica Rounded\",system-ui,sans-serif;font-weight:400;margin:0;height:100vh;overflow:hidden}.heading{position:absolute;top:0;left:0;right:15px;width:100vw;height:50vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}.heading h1{font-size:6em;margin:0;font-weight:400}a{margin-left:20px;font-weight:400;color:#c9b0ff;top:0;left:15px}a:visited{color:#666}.footer{position:absolute;bottom:5px;left:0;width:100vw;text-align:center;color:#666;font-size:.8em}</style><title>"
 .equ listing_head_p1_len, . - listing_head_p1
-;; current dir goes here
+// current dir goes here
 listing_base_p1: .ascii "</title><base href=\"/"
 .equ listing_base_p1_len, . - listing_base_p1
-;; current dir goes here also
+// current dir goes here also
 listing_base_p2: .ascii "/\">"
 .equ listing_base_p2_len, . - listing_base_p2
 
 listing_head_p2: .ascii "</head><body><h1>Index of "
 .equ listing_head_p2_len, . - listing_head_p2
-;; current dir goes here too
+// current dir goes here too
 listing_head_p3: .ascii "/</h1>"
 .equ listing_head_p3_len, . - listing_head_p3
 
-;; this is the reused part for each line
+// this is the reused part for each line
 listing_chunk_p1: .ascii "<a href=\""
 .equ listing_chunk_p1_len, . - listing_chunk_p1
-;; newdir goes here
+// newdir goes here
 listing_chunk_p2: .ascii "\">"
 .equ listing_chunk_p2_len, . - listing_chunk_p2
-;; newdir goes here too
+// newdir goes here too
 listing_chunk_p3: .ascii "</a><br>"
 .equ listing_chunk_p3_len, . - listing_chunk_p3
 
-;; this is at the end
+// this is at the end
 listing_tail: .ascii "</body><div class=\"footer\"><small>ymawky :: hand-rolled aarch64</small></div></html>"
 .equ listing_tail_len, . - listing_tail
 
-;; stuff for chunked encoding
+// stuff for chunked encoding
 crlf: .ascii "\r\n"
 .equ crlf_len, . - crlf
-;; end of the message
+// end of the message
 chunked_content_end: .ascii "0\r\n\r\n"
 .equ chunked_content_end_len, . - chunked_content_end
 
@@ -60,8 +60,8 @@ encoded_gt: .ascii "&gt;"
 encoded_lt: .ascii "&lt;"
 .equ encoded_lt_len, . - encoded_lt
 
-;; chunked encoding header. TODO refactor build_header to incorporate this
-;; and other potential header fields
+// chunked encoding header. TODO refactor build_header to incorporate this
+// and other potential header fields
 header: .ascii "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nTransfer-Encoding: chunked\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\nAllow: GET, HEAD, OPTIONS, DELETE, PUT\r\nAccept-Ranges: bytes\r\nServer: ymawky\r\n\r\n"
 .equ header_len, . - header
 
@@ -70,18 +70,18 @@ hex_digits: .ascii "0123456789ABCDEF"
 .bss
 .align 3
 hex_itoa_buf: .skip 16
-.equ chunk_buf_size, 4096 ; 4kb buffer for each chunk
+.equ chunk_buf_size, 4096 // 4kb buffer for each chunk
 chunk_buf: .skip chunk_buf_size
 
 .text
 .align 3
-;; x0 -> dest current
-;; x1 -> source literal
-;; x2 -> source length
-;;
-;; returns
-;; x0 -> destination offset to new current
-;; carry set on overflow
+// x0 -> dest current
+// x1 -> source literal
+// x2 -> source length
+//
+// returns
+// x0 -> destination offset to new current
+// carry set on overflow
 append_literal:
     stp x29, x30, [sp, #-32]!
     stp x19, x20, [sp, #16]
@@ -89,18 +89,18 @@ append_literal:
     mov x19, x0
     mov x20, x1
 
-    ;; bounds check stuff
+    // bounds check stuff
     adr_l x3, chunk_buf
     sub x4, x19, x3
     mov x5, chunk_buf_size
-    sub x4, x5, x4 ; x4 is remaining bytes
+    sub x4, x5, x4 // x4 is remaining bytes
 
     cmp x4, x2
     b.lo 1f
 
     mov x0, x19
     mov x1, x20
-    ;; x2 is already set by caller
+    // x2 is already set by caller
     bl memcpy
 
     cmn xzr, xzr
@@ -108,7 +108,7 @@ append_literal:
 1:
     mov x0, x19
     cmp xzr, xzr
-    ;; fallthrough
+    // fallthrough
 
 2:
     ldp x19, x20, [sp, #16]
@@ -116,17 +116,17 @@ append_literal:
 
     ret
 
-;; x0 -> destination
-;; x1 -> source
-;; x2 -> dest length
-;; x3 -> source length
-;; x4 -> allow /? 0 -> no, turn / into %2F; 1 -> yes, keep / as /
-;;
-;; returns
-;; x0 -> destination with pointer offset
-;; x1 -> bytes written
-;; carry set = overflow
-;; carry clear = success
+// x0 -> destination
+// x1 -> source
+// x2 -> dest length
+// x3 -> source length
+// x4 -> allow /? 0 -> no, turn / into %2F// 1 -> yes, keep / as /
+//
+// returns
+// x0 -> destination with pointer offset
+// x1 -> bytes written
+// carry set = overflow
+// carry clear = success
 href_encode:
     stp x29, x30, [sp, #-80]!
     stp x19, x20, [sp, #16]
@@ -134,12 +134,12 @@ href_encode:
     stp x23, x24, [sp, #48]
     str x25, [sp, #64]
 
-    mov x19, x0      ;; dst current
-    mov x23, x0      ;; dst start
-    mov x20, x1      ;; src current
-    mov x21, x2      ;; dst remaining
-    mov x22, x3      ;; src remaining
-    mov x25, x4      ;; encode /?
+    mov x19, x0      // dst current
+    mov x23, x0      // dst start
+    mov x20, x1      // src current
+    mov x21, x2      // dst remaining
+    mov x22, x3      // src remaining
+    mov x25, x4      // encode /?
 
 href_encode_loop:
     cbz x22, href_done
@@ -154,14 +154,14 @@ href_encode_loop:
     b.ls href_raw
 
 href_check_lower:
-    ;; a-z
+    // a-z
     cmp w24, #'a'
     b.lo href_check_digit
     cmp w24, #'z'
     b.ls href_raw
 
 href_check_digit:
-    ;; 0-9
+    // 0-9
     cmp w24, #'0'
     b.lo href_check_punct
     cmp w24, #'9'
@@ -177,22 +177,22 @@ href_check_punct:
     cmp w24, #'~'
     b.eq href_raw
 
-    cmp x25, #0 ; if we want to encode / anyway, just check now and go.
+    cmp x25, #0 // if we want to encode / anyway, just check now and go.
     b.eq href_percent
 
-    cmp w24, #'/' ; otherwise, check if the current char is ;
-    b.eq href_raw ; and treat it as literal if so
+    cmp w24, #'/' // otherwise, check if the current char is //
+    b.eq href_raw // and treat it as literal if so
 
-    b href_percent ; otherwise percent encode it
+    b href_percent // otherwise percent encode it
 
 href_raw:
-    ;; byte is safe to copy as-is. A-Za-z0-9 .-_~
+    // byte is safe to copy as-is. A-Za-z0-9 .-_~
     strb w24, [x19], #1
     sub x21, x21, #1
     b href_encode_loop
 
 href_percent:
-    ; need 3 bytes for output: %xx
+    // need 3 bytes for output: %xx
     cmp x21, #3
     b.lo href_overflow
 
@@ -201,13 +201,13 @@ href_percent:
 
     adr_l x10, hex_digits
 
-    ;; high nibble
+    // high nibble
     lsr w0, w24, #4
     and w0, w0, #0xf
     ldrb w0, [x10, x0]
     strb w0, [x19], #1
 
-    ;; low nibble
+    // low nibble
     and w0, w24, #0xf
     ldrb w0, [x10, x0]
     strb w0, [x19], #1
@@ -218,14 +218,14 @@ href_percent:
 href_overflow:
     mov x0, x19
     sub x1, x19, x23
-    cmp xzr, xzr ; set carry
+    cmp xzr, xzr // set carry
     b href_epilogue
 
 href_done:
     mov x0, x19
     sub x1, x19, x23
-    cmn xzr, xzr ;; clear carry
-    ;; fallthrough
+    cmn xzr, xzr // clear carry
+    // fallthrough
 href_epilogue:
     ldr x25, [sp, #64]
     ldp x23, x24, [sp, #48]
@@ -235,28 +235,28 @@ href_epilogue:
     ret
 
 
-;; input
-;; x0 -> destination
-;; x1 -> source
-;; x2 -> destination length
-;; x3 -> source length
-;;
-;; return:
+// input
+// x0 -> destination
+// x1 -> source
+// x2 -> destination length
+// x3 -> source length
+//
+// return:
 body_encode:
     stp x29, x30, [sp, #-64]!
     stp x19, x20, [sp, #16]
     stp x21, x22, [sp, #32]
     str x23, [sp, #48]
 
-    mov x19, x0 ; dest
+    mov x19, x0 // dest
     mov x23, x0
-    mov x20, x1 ; source
-    mov x21, x2 ; dest length
-    mov x22, x3 ; source length
+    mov x20, x1 // source
+    mov x21, x2 // dest length
+    mov x22, x3 // source length
 
 body_encode_loop:
-    cbz x22, Ldone ; source fully consumed? success
-    cbz x21, Loverflow ; overflow if there's more source but dst is full
+    cbz x22, Ldone // source fully consumed? success
+    cbz x21, Loverflow // overflow if there's more source but dst is full
 
     ldrb w0, [x20], #1
     cmp w0, #'&'
@@ -267,14 +267,14 @@ body_encode_loop:
     b.eq Lgt
     cmp w0, #'<'
     b.eq Llt
-    cmp w0, #0x27 ; apostrophe '
+    cmp w0, #0x27 // apostrophe '
     b.eq Lapost
 
     strb w0, [x19], #1
 
-    sub x21, x21, #1 ; consumed 1 byte to dest
+    sub x21, x21, #1 // consumed 1 byte to dest
 1:
-    sub x22, x22, #1 ; only consumed 1 byte from source
+    sub x22, x22, #1 // only consumed 1 byte from source
     b body_encode_loop
 
 Lamp:
@@ -306,10 +306,10 @@ Lcopy_encoding:
     cmp x21, x0
     b.lo Loverflow
 
-    sub x21, x21, x0 ; consumed multiple bytes to dest
+    sub x21, x21, x0 // consumed multiple bytes to dest
 
     mov x2, x0
-    ;; x1 is already set
+    // x1 is already set
     mov x0, x19
     bl memcpy
     mov x19, x0
@@ -317,16 +317,16 @@ Lcopy_encoding:
     b 1b
 
 Loverflow:
-    mov x0, x19 ; pointer to destination, offset
-    sub x1, x19, x23 ; bytes written
-    cmp xzr, xzr ; set carry
+    mov x0, x19 // pointer to destination, offset
+    sub x1, x19, x23 // bytes written
+    cmp xzr, xzr // set carry
     b 2f
 
 Ldone:
-    mov x0, x19 ; pointer to destination, offset
-    sub x1, x19, x23 ; bytes written
-    cmn xzr, xzr ; clear carry
-    ;; fallthrough
+    mov x0, x19 // pointer to destination, offset
+    sub x1, x19, x23 // bytes written
+    cmn xzr, xzr // clear carry
+    // fallthrough
 
 2:
     ldr x23, [sp, #48]
@@ -336,45 +336,45 @@ Ldone:
 
     ret
 
-;; input
-;; x0 -> filedes to write to
-;; x1 -> content
-;; x2 -> length
+// input
+// x0 -> filedes to write to
+// x1 -> content
+// x2 -> length
 write_with_chunk_length:
     stp x29, x30, [sp, #-48]!
     stp x19, x20, [sp, #16]
     str x21, [sp, #32]
 
-    mov x19, x0 ; file descriptor
-    mov x20, x1 ; content
-    mov x21, x2 ; length
+    mov x19, x0 // file descriptor
+    mov x20, x1 // content
+    mov x21, x2 // length
     
-    ; encode chunk length to hex
+    // encode chunk length to hex
     mov x0, x21
     adr_l x1, hex_itoa_buf
     bl hex_itoa
-    ; x0 -> number of digits
-    ; x1 -> pointer to start of string
+    // x0 -> number of digits
+    // x1 -> pointer to start of string
 
-    ; write content length in hex
+    // write content length in hex
     mov x2, x0
-    ; x1 should already be set by hex_itoa
+    // x1 should already be set by hex_itoa
     mov x0, x19
     bl write_all
 
-    ; write \r\n
+    // write \r\n
     mov x0, x19
     adr_l x1, crlf
     mov x2, crlf_len
     bl write_all
 
-    ; write content
+    // write content
     mov x0, x19
     mov x1, x20
     mov x2, x21
     bl write_all
 
-    ; write \r\n again
+    // write \r\n again
     mov x0, x19
     adr_l x1, crlf
     mov x2, crlf_len
@@ -386,13 +386,13 @@ write_with_chunk_length:
 
     ret
 
-;; input
-;; x0 -> filename
-;; x1 -> filename length
-;; x2 -> file type (directory?)
-;;
-;; returns
-;; nothing?
+// input
+// x0 -> filename
+// x1 -> filename length
+// x2 -> file type (directory?)
+//
+// returns
+// nothing?
 write_chunk:
     stp x29, x30, [sp, #-48]!
     stp x19, x20, [sp, #16]
@@ -402,43 +402,43 @@ write_chunk:
     mov x20, x1
     mov x21, x2
 
-    ; copy <p><a href="
+    // copy <p><a href="
     adr_l x0, chunk_buf
     adr_l x1, listing_chunk_p1
     mov x2, listing_chunk_p1_len
     bl append_literal
     b.cs wc_overflow
-    mov x22, x0 ; save offset
+    mov x22, x0 // save offset
 
-    ; copy filename, again
+    // copy filename, again
     adr_l x0, chunk_buf 
-    sub x2, x22, x0 ; bytes already used
+    sub x2, x22, x0 // bytes already used
     mov x1, chunk_buf_size
-    sub x2, x1, x2 ; remaining dest space
+    sub x2, x1, x2 // remaining dest space
 
     mov x0, x22
     mov x1, x19
-    ;; x2 is already set
+    // x2 is already set
     mov x3, x20
     mov x4, #0
     bl href_encode
     b.cs wc_overflow
     mov x22, x0
 
-    ;; copy the / if it's a dir
+    // copy the / if it's a dir
     cmp x21, #DT_DIR
     b.ne 1f
 
     adr_l x0, chunk_buf
-    sub x1, x22, x0 ; bytes used so far
+    sub x1, x22, x0 // bytes used so far
     mov x2, chunk_buf_size
-    sub x2, x2, x1 ; remaining space
-    cbz x2, wc_overflow ; oh :( so tiny :( no room for even 1 a single byte :(
+    sub x2, x2, x1 // remaining space
+    cbz x2, wc_overflow // oh :( so tiny :( no room for even 1 a single byte :(
 
     mov w3, #'/'
-    strb w3, [x22], #1 ; append the / and advance the pointer
+    strb w3, [x22], #1 // append the / and advance the pointer
 1:
-    ; copy "\">"
+    // copy "\">"
     mov x0, x22
     adr_l x1, listing_chunk_p2
     mov x2, listing_chunk_p2_len
@@ -446,11 +446,11 @@ write_chunk:
     b.cs wc_overflow
     mov x22, x0
 
-    ; copy filename, again
+    // copy filename, again
     adr_l x8, chunk_buf
-    sub x2, x22, x8 ; bytes already used
+    sub x2, x22, x8 // bytes already used
     mov x7, chunk_buf_size
-    sub x2, x7, x2 ; x2 = remaining destination space
+    sub x2, x7, x2 // x2 = remaining destination space
 
     mov x0, x22
     mov x1, x19
@@ -459,20 +459,20 @@ write_chunk:
     b.cs wc_overflow
     mov x22, x0
 
-    ;; append '/' to directories in the list
+    // append '/' to directories in the list
     cmp x21, #DT_DIR
-    b.ne 1f ; not a dir, skip the slash
+    b.ne 1f // not a dir, skip the slash
 
     adr_l x0, chunk_buf
-    sub x1, x22, x0 ; bytes used so far
+    sub x1, x22, x0 // bytes used so far
     mov x2, chunk_buf_size
-    sub x2, x2, x1 ; remaining
-    cbz x2, wc_overflow ; so tiny :( no room for even 1 byte :(
+    sub x2, x2, x1 // remaining
+    cbz x2, wc_overflow // so tiny :( no room for even 1 byte :(
 
     mov w3, #'/'
-    strb w3, [x22], #1 ; append slash and advance the pointer
+    strb w3, [x22], #1 // append slash and advance the pointer
 1:
-    ; copy "</a></p>"
+    // copy "</a></p>"
     mov x0, x22
     adr_l x1, listing_chunk_p3
     mov x2, listing_chunk_p3_len
@@ -488,8 +488,8 @@ wc_done:
 
     b wc_epilogue
 wc_overflow:
-    ;; fallthrough
-    ;; don't write the chunk
+    // fallthrough
+    // don't write the chunk
 
 wc_epilogue:
     ldp x21, x22, [sp, #32]
@@ -498,42 +498,42 @@ wc_epilogue:
 
     ret
 
-;; input
-;; x0 -> filename
-;; x1 -> filename length
-;;
-;; returns
-;; nothing?
+// input
+// x0 -> filename
+// x1 -> filename length
+//
+// returns
+// nothing?
 write_chunk_head:
     stp x29, x30, [sp, #-48]!
     stp x19, x20, [sp, #16]
     stp x21, x22, [sp, #32]
 
-    mov x19, x0 ; filename
-    mov x20, x1 ; filename length
+    mov x19, x0 // filename
+    mov x20, x1 // filename length
 
-    ; copy it
+    // copy it
     adr_l x0, chunk_buf
     adr_l x1, listing_head_p1
     mov x2, listing_head_p1_len
     bl append_literal
     mov x22, x0
 
-    ; copy filename
+    // copy filename
     adr_l x8, chunk_buf
-    sub x2, x22, x8 ; bytes already used
+    sub x2, x22, x8 // bytes already used
     mov x7, chunk_buf_size
-    sub x2, x7, x2 ; x2 = remaining destination space
+    sub x2, x7, x2 // x2 = remaining destination space
 
     mov x0, x22
     mov x1, x19
-    ;; x2 is set
+    // x2 is set
     mov x3, x20
     bl body_encode
     b.cs wch_overflow
     mov x22, x0
 
-    ;; copy the base part
+    // copy the base part
     mov x0, x22
     adr_l x1, listing_base_p1
     mov x2, listing_base_p1_len
@@ -541,22 +541,22 @@ write_chunk_head:
     b.cs wch_overflow
     mov x22, x0
 
-    ;; filename again
+    // filename again
     adr_l x8, chunk_buf
-    sub x2, x22, x8 ; bytes already used
+    sub x2, x22, x8 // bytes already used
     mov x7, chunk_buf_size
-    sub x2, x7, x2 ; x2 = remaining destination space
+    sub x2, x7, x2 // x2 = remaining destination space
 
     mov x0, x22
     mov x1, x19
-    ;; x2 is set
+    // x2 is set
     mov x3, x20
-    mov x4, #1 ; treat / as literal in href_encode
+    mov x4, #1 // treat / as literal in href_encode
     bl href_encode
     b.cs wch_overflow
     mov x22, x0
 
-    ;; copy the end of the base thing
+    // copy the end of the base thing
     mov x0, x22
     adr_l x1, listing_base_p2
     mov x2, listing_base_p2_len
@@ -564,7 +564,7 @@ write_chunk_head:
     b.cs wch_overflow
     mov x22, x0
 
-    ; copy part 2
+    // copy part 2
     mov x0, x22
     adr_l x1, listing_head_p2
     mov x2, listing_head_p2_len
@@ -572,15 +572,15 @@ write_chunk_head:
     b.cs wch_overflow
     mov x22, x0
 
-    ; copy filename, again
+    // copy filename, again
     adr_l x8, chunk_buf
-    sub x2, x22, x8 ; bytes already used
+    sub x2, x22, x8 // bytes already used
     mov x7, chunk_buf_size
-    sub x2, x7, x2 ; x2 = remaining destination space
+    sub x2, x7, x2 // x2 = remaining destination space
 
     mov x0, x22
     mov x1, x19
-    ;; x2 is set
+    // x2 is set
     mov x3, x20
     bl body_encode
     b.cs wch_overflow
@@ -595,11 +595,11 @@ write_chunk_head:
 
     ldr_l x0, clientfd
     adr_l x1, chunk_buf
-    sub x2, x22, x1 ; actual length = current - base
+    sub x2, x22, x1 // actual length = current - base
     bl write_with_chunk_length
 
 wch_overflow:
-    ; maybe set some error flag so we can 500 here
+    // maybe set some error flag so we can 500 here
 wch_epilogue:
     ldp x21, x22, [sp, #32]
     ldp x19, x20, [sp, #16]
@@ -608,35 +608,35 @@ wch_epilogue:
     ret
 
 
-;; input
-;; x0 -> open file descriptor
-;; x1 -> filename string
-;; x2 -> filename length
-;;
-;; returns
-;; nothing
+// input
+// x0 -> open file descriptor
+// x1 -> filename string
+// x2 -> filename length
+//
+// returns
+// nothing
 dir_listing:
-    mov x20, x0 ; file descriptor
-    mov x21, x1 ; filename
-    mov x22, x2 ; filename len
+    mov x20, x0 // file descriptor
+    mov x21, x1 // filename
+    mov x22, x2 // filename len
 
     mov x0, ALLOW_DIR_LISTING
     cbz x0, L403
 
     ldr_l x0, docroot_len
-    add x21, x21, x0 ; skip past the docroot
-    sub x22, x22, x0 ; decrement filename size to account for it
+    add x21, x21, x0 // skip past the docroot
+    sub x22, x22, x0 // decrement filename size to account for it
 
-    ;; strip a trailing slash if present. write_chunk_head and listing_base_p1
-    ;; and listing_base_p2 will always add a / and we don't want double-doodie
+    // strip a trailing slash if present. write_chunk_head and listing_base_p1
+    // and listing_base_p2 will always add a / and we don't want double-doodie
     cbz x22, Lno_strip
     add x1, x21, x22
-    sub x1, x1, #1 ; pointer to last byte
+    sub x1, x1, #1 // pointer to last byte
 
     ldrb w2, [x1]
     cmp w2, #'/'
     b.ne Lno_strip
-    sub x22, x22, #1 ; remove the trailing slash from length
+    sub x22, x22, #1 // remove the trailing slash from length
 
 Lno_strip:
     ldr_l x0, clientfd
@@ -648,44 +648,44 @@ Lno_strip:
     mov x1, x22
     bl write_chunk_head
 
-    ;; 8KB + 8 bytes for basep + align stack to 16 bytes
+    // 8KB + 8 bytes for basep + align stack to 16 bytes
     mov x0, #8208
     sub sp, sp, x0
-    str xzr, [sp, #8192] ;; initialize *basep to 0
+    str xzr, [sp, #8192] // initialize *basep to 0
 
 gde_loop:
-    ;; #8192 is too big for add (0-4096), so we gotta load it into a register
-    ;; first, and do add xN, xN, x0.
+    // #8192 is too big for add (0-4096), so we gotta load it into a register
+    // first, and do add xN, xN, x0.
     mov x0, #8192
     mov x16, SYS_getdirentries64
     mov x1, sp
-    mov x2, x0 ; 8kb buffer
-    add x3, sp, x0 ; basep
+    mov x2, x0 // 8kb buffer
+    add x3, sp, x0 // basep
     mov x0, x20
     svc #0x80
     b.cs gde_err
-    ;; x0 = bytes written to buffer. if x0 == 0, we're done.
+    // x0 = bytes written to buffer. if x0 == 0, we're done.
     cbz x0, gde_done
 
-    ;; load up the relevant stuff from the buffer
-    mov x19, sp ; x19 is current dirent walk
-    add x23, sp, x0 ; x23 is the end of valid data
+    // load up the relevant stuff from the buffer
+    mov x19, sp // x19 is current dirent walk
+    add x23, sp, x0 // x23 is the end of valid data
 
 gde_entry:
-    ;; if we're at the end of the dir walk, but gdtdirentries() didn't return 0
-    ;; then we should go back up to the loop
+    // if we're at the end of the dir walk, but gdtdirentries() didn't return 0
+    // then we should go back up to the loop
     cmp x19, x23
     b.hs gde_loop
 
-    ;; write the entry
+    // write the entry
     add x0, x19, #OFF_D_NAME
     ldrh w1, [x19, #OFF_D_NAMLEN]
     ldrb w2, [x19, #OFF_D_TYPE]
     bl write_chunk
 
-    ldrh w0, [x19, #OFF_D_RECLEN] ; load d_reclen, length of current record
-    add x19, x19, x0 ; skip to the next record
-    b gde_entry ; process the next entry
+    ldrh w0, [x19, #OFF_D_RECLEN] // load d_reclen, length of current record
+    add x19, x19, x0 // skip to the next record
+    b gde_entry // process the next entry
 
 gde_err:
     mov x19, x0
@@ -695,7 +695,7 @@ gde_err:
     svc #0x80
 
 gde_done:
-    ;; restore stack space
+    // restore stack space
     mov x0, #8208
     add sp, sp, x0
 
@@ -704,7 +704,7 @@ gde_done:
     mov x2, listing_tail_len
     bl write_with_chunk_length
 
-    ;; write 0\r\n\r\n
+    // write 0\r\n\r\n
     ldr_l x0, clientfd
     adr_l x1, chunked_content_end
     mov x2, chunked_content_end_len
@@ -719,34 +719,34 @@ close:
 
     b child_end
 
-;; input
-;; x0 -> number to convert
-;; x1 -> pointer to memory to write the string
-;;
-;; returns
-;; x0 -> number of digits written
-;; x1 -> start of string
+// input
+// x0 -> number to convert
+// x1 -> pointer to memory to write the string
+//
+// returns
+// x0 -> number of digits written
+// x1 -> start of string
 hex_itoa:
-    mov w2, #8 ; max digits
-    add x1, x1, #8 ; write right-to-left
-    mov w3, #0 ; digit count
+    mov w2, #8 // max digits
+    add x1, x1, #8 // write right-to-left
+    mov w3, #0 // digit count
 
 Lhex_loop:
-    and w4, w0, #0xf ; low nibble
+    and w4, w0, #0xf // low nibble
     cmp w4, #10
     b.lo Ldigit
-    add w4, w4, #('a' - 10) ; 10-15 -> "a"-"f"
+    add w4, w4, #('a' - 10) // 10-15 -> "a"-"f"
     b Lstore
 Ldigit:
-    add w4, w4, #'0' ; 0-9 -> "0"->"9"
+    add w4, w4, #'0' // 0-9 -> "0"->"9"
 Lstore:
     sub x1, x1, #1
     strb w4, [x1]
     add w3, w3, #1
-    lsr w0, w0, #4 ; shift down one nibble
+    lsr w0, w0, #4 // shift down one nibble
     cbnz w0, Lhex_loop
 
-    ;; we're done
+    // we're done
     mov x0, x3
     ret
 

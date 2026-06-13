@@ -1,26 +1,26 @@
-;;; This file is part of ymawky.
-;;; Copyright (C) 2026 imtomt
-;;;
-;;; ymawky is free software: you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published by
-;;; the Free Software Foundation, version 3.
-;;;
-;;; ymawky is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-;;; GNU General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with ymawky. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of ymawky.
+// Copyright (C) 2026 imtomt
+//
+// ymawky is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 3.
+//
+// ymawky is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with ymawky. If not, see <https://www.gnu.org/licenses/>.
 
 #include "defs.S"
 
 .macro mime_entry ext, mime
 99:
     .asciz "\ext"
-    .space 8 - (. - 99b)  ;; pad to offset 8 from entry start
+    .space 8 - (. - 99b)  // pad to offset 8 from entry start
     .asciz "\mime"
-    .space 96 - (. - 99b) ;; pad to offset 96 from entry start
+    .space 96 - (. - 99b) // pad to offset 96 from entry start
 .endm
 
 .global stat_fd
@@ -31,11 +31,11 @@
 .global decode_url
 
 .data
-;; table of file extension / corresponding MIME types.
-;; this table is offset by 96 bytes per entry; 8 bytes for the extension, and
-;; 88 bytes for the MIME type string.
+// table of file extension / corresponding MIME types.
+// this table is offset by 96 bytes per entry; 8 bytes for the extension, and
+// 88 bytes for the MIME type string.
 file_types:
-    ;; web stuff
+    // web stuff
     mime_entry ".html",  "text/html; charset=utf-8"
     mime_entry ".htm",   "text/html; charset=utf-8"
     mime_entry ".css",   "text/css; charset=utf-8"
@@ -47,7 +47,7 @@ file_types:
     mime_entry ".mjs",   "text/javascript; charset=utf-8"
     mime_entry ".map",   "application/json"
 
-    ;; image
+    // image
     mime_entry ".png",   "image/png"
     mime_entry ".jpg",   "image/jpeg"
     mime_entry ".jpeg",  "image/jpeg"
@@ -60,13 +60,13 @@ file_types:
     mime_entry ".tiff",  "image/tiff"
     mime_entry ".apng",  "image/apng"
 
-    ;; fonts
+    // fonts
     mime_entry ".woff",  "font/woff"
     mime_entry ".woff2", "font/woff2"
     mime_entry ".ttf",   "font/ttf"
     mime_entry ".otf",   "font/otf"
 
-    ;; documents
+    // documents
     mime_entry ".txt",   "text/plain; charset=utf-8"
     mime_entry ".pdf",   "application/pdf"
     mime_entry ".doc",   "application/msword"
@@ -74,14 +74,14 @@ file_types:
     mime_entry ".epub",  "application/epub+zip"
     mime_entry ".rtf",   "application/rtf"
 
-    ;; video
+    // video
     mime_entry ".mp4",   "video/mp4"
     mime_entry ".webm",  "video/webm"
     mime_entry ".mkv",   "video/x-matroska"
     mime_entry ".avi",   "video/x-msvideo"
     mime_entry ".mov",   "video/quicktime"
 
-    ;; audio
+    // audio
     mime_entry ".mp3",   "audio/mpeg"
     mime_entry ".ogg",   "audio/ogg"
     mime_entry ".wav",   "audio/wav"
@@ -90,7 +90,7 @@ file_types:
     mime_entry ".m4a",   "audio/mp4"
     mime_entry ".opus",  "audio/opus"
 
-    ;; archives
+    // archives
     mime_entry ".zip",   "application/zip"
     mime_entry ".gz",    "application/gzip"
     mime_entry ".tar",   "application/x-tar"
@@ -98,7 +98,7 @@ file_types:
     mime_entry ".bz2",   "application/x-bzip2"
     mime_entry ".rar",   "application/vnd.rar"
 
-    ;; empty extension = end of table
+    // empty extension = end of table
     .byte 0
 
 unknown_ct: .ascii "text/plain; charset=utf-8"
@@ -107,113 +107,113 @@ unknown_ct: .ascii "text/plain; charset=utf-8"
 .text
 .align 2
 
-;; run fstat64() on file descirptor, returning file size and type
-;; input
-;; x0 -> file descriptor
-;;
-;; returns
-;; x0 -> 0 on success, otherwise, errno from stat64
-;; w1 -> file type
-;; x2 -> size
-;; x3 -> executable? 1 = yes, 0 = no
+// run fstat64() on file descirptor, returning file size and type
+// input
+// x0 -> file descriptor
+//
+// returns
+// x0 -> 0 on success, otherwise, errno from stat64
+// w1 -> file type
+// x2 -> size
+// x3 -> executable? 1 = yes, 0 = no
 stat_fd:
-    sub sp, sp, #160 ; reserve stack buffer (stat requires 144 bytes, round up)
+    sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
     mov x16, SYS_fstat64
 
-    mov x1, sp ; stat buffer, on the stack
+    mov x1, sp // stat buffer, on the stack
     svc #0x80
     b.cs Lstat_fd_failed
 
-    ; read st_mode (halfword at offset 4 in stat buffer)
-    ; NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
-    ; NOTE at offset 4. if that ever changes, look here!
+    // read st_mode (halfword at offset 4 in stat buffer)
+    // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
+    // NOTE at offset 4. if that ever changes, look here!
     ldrh w1, [sp, #4]
 
-    ;; here we check if the file is executable, so we can treat it as a CGI
-    ;; script possibly!
+    // here we check if the file is executable, so we can treat it as a CGI
+    // script possibly!
     tst w1, #S_IXUSR
-    ;; cset sets x3 to 1 if the condition is TRUE, otherwise 0.
-    ;; basically, if the S_IXUSR bit is found in w1, it's 1. if not, it's 0
+    // cset sets x3 to 1 if the condition is TRUE, otherwise 0.
+    // basically, if the S_IXUSR bit is found in w1, it's 1. if not, it's 0
     cset x3, ne
 
-    ;; w1 is unchanged from tst. so, we can use it for the file type return,
-    ;; too.
-    and w1, w1, #0xF000 ; mask S_IFMT
-    ldr x2, [sp, #96] ; load st_size into x2
+    // w1 is unchanged from tst. so, we can use it for the file type return,
+    // too.
+    and w1, w1, #0xF000 // mask S_IFMT
+    ldr x2, [sp, #96] // load st_size into x2
 
     mov x0, #0
     b Lstat_fd_end
 
 Lstat_fd_failed:
-    ;; x0 is already errno. these two movs aren't strictly necessary, but i
-    ;; think it's nice to have it all zeroed out.
+    // x0 is already errno. these two movs aren't strictly necessary, but i
+    // think it's nice to have it all zeroed out.
     mov x1, #0
     mov x2, #0
     mov x3, #0
-    ;; fallthrough
+    // fallthrough
 Lstat_fd_end:
     add sp, sp, #160
     ret
 
 
-;; run stat64() on file path, returning file size and type
-;; input
-;; x0 -> file path
-;;
-;; returns
-;; x0 -> 0 on success, otherwise, errno from stat64
-;; w1 -> file type
-;; x2 -> size
-;; x3 -> executable? 1 = yes, 0 = no
+// run stat64() on file path, returning file size and type
+// input
+// x0 -> file path
+//
+// returns
+// x0 -> 0 on success, otherwise, errno from stat64
+// w1 -> file type
+// x2 -> size
+// x3 -> executable? 1 = yes, 0 = no
 stat_path:
-    sub sp, sp, #160 ; reserve stack buffer (stat requires 144 bytes, round up)
+    sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
     mov x16, SYS_stat64
-    ;; x0 is already set
-    mov x1, sp ; stat buffer, on the stack
+    // x0 is already set
+    mov x1, sp // stat buffer, on the stack
     svc #0x80
     b.cs Lstat_path_failed
 
-    ; read st_mode (halfword at offset 4 in stat buffer)
-    ; NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
-    ; NOTE at offset 4. if that ever changes, look here!
+    // read st_mode (halfword at offset 4 in stat buffer)
+    // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
+    // NOTE at offset 4. if that ever changes, look here!
     ldrh w1, [sp, #4]
 
-    ;; same shit as before you know the deal
+    // same shit as before you know the deal
     tst w1, #S_IXUSR
     cset x3, ne
 
-    and w1, w1, #0xF000 ; mask S_IFMT
-    ldr x2, [sp, #96] ; load st_size into x2
+    and w1, w1, #0xF000 // mask S_IFMT
+    ldr x2, [sp, #96] // load st_size into x2
     mov x0, #0
     b Lstat_path_end
 
 Lstat_path_failed:
-    ;; x0 is already errno. these two movs aren't strictly necessary, but i
-    ;; think it's nice to have it all zeroed out.
+    // x0 is already errno. these two movs aren't strictly necessary, but i
+    // think it's nice to have it all zeroed out.
     mov x1, #0
     mov x2, #0
     mov x3, #0
-    ;; fallthrough
+    // fallthrough
 Lstat_path_end:
     add sp, sp, #160
     ret
 
 
-;; checks for path traversal: GET /../../file.txt
-;; it does not do anything else. one "." is fine. more than two "..." is fine.
-;; two ".." in a file "foo..txt" is fine. but a path segment being just .. is
-;; no good!
-;; input
-;; x0 -> filename string
-;; x1 -> filename length
-;;
-;; returns
-;; x0 -> 1 if safe, 0 if unsafe
-;;
-;; clobbers
-;; x2 -> index into string
-;; x3 -> dot count per segment
-;; x4 -> segment length
+// checks for path traversal: GET /../../file.txt
+// it does not do anything else. one "." is fine. more than two "..." is fine.
+// two ".." in a file "foo..txt" is fine. but a path segment being just .. is
+// no good!
+// input
+// x0 -> filename string
+// x1 -> filename length
+//
+// returns
+// x0 -> 1 if safe, 0 if unsafe
+//
+// clobbers
+// x2 -> index into string
+// x3 -> dot count per segment
+// x4 -> segment length
 check_path_traversal:
     mov x2, #0
     mov x3, #0
@@ -272,25 +272,25 @@ Lpath_traversal:
     ret
 
 
-;; ensure a path only has ascii characters.
-;; input
-;; x0 -> path to check
-;; x1 -> path length
-;;
-;; returns
-;; x0 -> 1 if safe, 0 if unsafe
+// ensure a path only has ascii characters.
+// input
+// x0 -> path to check
+// x1 -> path length
+//
+// returns
+// x0 -> 1 if safe, 0 if unsafe
 check_path_safety:
-    ;; if we've reached the end and no issues yet, it's safe
+    // if we've reached the end and no issues yet, it's safe
     cbz x1, Lsafe
 
     ldrb w3, [x0]
 
-    ;; everything under and including 0x1F, "US" or Unit Separator.
+    // everything under and including 0x1F, "US" or Unit Separator.
     cmp w3, #0x1F
     b.le Lunsafe
 
-    ;; everything including and after 0x7F, which is DELETE. everything after
-    ;; that is not valid ascii anymore.
+    // everything including and after 0x7F, which is DELETE. everything after
+    // that is not valid ascii anymore.
     cmp w3, #0x7F
     b.ge Lunsafe
 
@@ -307,26 +307,26 @@ Lunsafe:
     ret
 
 
-;; given a filename, extract the extension and return MIME type.
-;; input
-;; x0 -> filename
-;; x1 -> filename length
-;;
-;; returns
-;; x0 -> content-type string (eg text/html)
-;; x1 -> length of content-type string
+// given a filename, extract the extension and return MIME type.
+// input
+// x0 -> filename
+// x1 -> filename length
+//
+// returns
+// x0 -> content-type string (eg text/html)
+// x1 -> length of content-type string
 get_filetype:
-    ;; push the link register to the stack sorta. since we bl strcmp, we need
-    ;; to preserve it
+    // push the link register to the stack sorta. since we bl strcmp, we need
+    // to preserve it
     stp x29, x30, [sp, #-64]!
     stp x19, x20, [sp, #16]
     stp x21, x22, [sp, #32]
     str x23, [sp, #48]
-    mov x19, x0 ; save the start pointer
-    add x0, x0, x1 ; now x0 points to one past the end of the string
+    mov x19, x0 // save the start pointer
+    add x0, x0, x1 // now x0 points to one past the end of the string
 
 1:
-    ; are we at the start again? if so, no file extension was present.
+    // are we at the start again? if so, no file extension was present.
     cmp x0, x19
     b.eq Lreturn_unknown
 
@@ -338,9 +338,9 @@ get_filetype:
 
     b 1b
 
-;; Ok, now x0 is pointing at the '.' in the filename
+// Ok, now x0 is pointing at the '.' in the filename
 Lfound_extension:
-    mov x21, x0 ;; save this position
+    mov x21, x0 // save this position
     mov x22, x1
 
     adr_l x1, file_types
@@ -350,8 +350,8 @@ Lfound_extension:
     cmp w20, #0
     b.eq Lreturn_unknown
 
-    mov x23, x1 ;; save table pointer
-    mov x0, x21 ;; filename, from . and on
+    mov x23, x1 // save table pointer
+    mov x0, x21 // filename, from . and on
     mov x2, #8
     bl streqn_i
 
@@ -363,9 +363,9 @@ Lfound_extension:
 
 Lmatch:
     add x22, x23, #8
-    mov x1, x22 ;; strlen takes x1
-    bl strlen  ;; x0 is now length
-    mov x1, x0 ;; we want to return length in x1
+    mov x1, x22 // strlen takes x1
+    bl strlen  // x0 is now length
+    mov x1, x0 // we want to return length in x1
     mov x0, x22
     b Lreturn
 
@@ -375,7 +375,7 @@ Lreturn_unknown:
     b Lreturn
  
 Lreturn:
-    ;; restore the link register we pushed to the stack
+    // restore the link register we pushed to the stack
     ldr x23, [sp, #48]
     ldp x21, x22, [sp, #32]
     ldp x19, x20, [sp, #16]
@@ -383,23 +383,23 @@ Lreturn:
     ret
 
 
-;; convert %XX in URL to 0xXX raw bytes. %0a = newline, %20 = space, etc.
-;; input
-;; x0 -> encoded string
-;; x1 -> length of encoded string
-;;
-;; returns
-;; x0 -> decoded string (decoded in-place)
-;; x1 -> length of decoded string
+// convert %XX in URL to 0xXX raw bytes. %0a = newline, %20 = space, etc.
+// input
+// x0 -> encoded string
+// x1 -> length of encoded string
+//
+// returns
+// x0 -> decoded string (decoded in-place)
+// x1 -> length of decoded string
 decode_url:
     stp x29, x30, [sp, #-32]!
     str x20, [sp, #16]
-    mov x2, x0 ; write pointer
-    mov x3, #0 ;; x3 is length of new string
+    mov x2, x0 // write pointer
+    mov x3, #0 // x3 is length of new string
 
 Ldecode_loop:
     ldrb w4, [x0]
-    ;; make sure we're not null
+    // make sure we're not null
     cmp w4, #0
     b.eq Ldecode_end
 
@@ -409,36 +409,36 @@ Ldecode_loop:
     strb w4, [x2, x3]
     add x3, x3, #1
 
-    ;; make sure we're not reading beyond the length of the string
+    // make sure we're not reading beyond the length of the string
     sub x1, x1, #1
     cmp x1, #0
     b.eq Ldecode_end
 
-    add x0, x0, #1 ; increment along the new string to the next char
+    add x0, x0, #1 // increment along the new string to the next char
     b Ldecode_loop
 
 Lencoded_char:
     cmp x1, #3
     b.lt Lbad_end
 
-    ;; high nibble
+    // high nibble
     ldrb w4, [x0, #1]
     bl hex_to_val
     cbnz x20, Lbad_end
 
-    lsl w5, w4, #4 ; stash in w5
+    lsl w5, w4, #4 // stash in w5
 
-    ;; low nibble
+    // low nibble
     ldrb w4, [x0, #2]
     bl hex_to_val
     cbnz x20, Lbad_end
 
-    orr w4, w5, w4 ; combine w5 (high nibble) with w4 (low nibble)
+    orr w4, w5, w4 // combine w5 (high nibble) with w4 (low nibble)
 
     cmp w4, #0
     b.eq Lbad_end
 
-    ;; now w4 contains the decoded byte
+    // now w4 contains the decoded byte
     strb w4, [x2, x3]
 
     add x3, x3, #1
@@ -477,7 +477,7 @@ Ldecode_end:
     mov x0, x2
     mov x1, x3
 
-    strb wzr, [x0, x1] ;; null terminate decoded string
+    strb wzr, [x0, x1] // null terminate decoded string
     b Ldecode_epilogue
 
 Lbad_end:

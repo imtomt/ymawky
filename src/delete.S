@@ -1,17 +1,17 @@
-;;; This file is part of ymawky.
-;;; Copyright (C) 2026 imtomt
-;;;
-;;; ymawky is free software: you can redistribute it and/or modify
-;;; it under the terms of the GNU General Public License as published by
-;;; the Free Software Foundation, version 3.
-;;;
-;;; ymawky is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-;;; GNU General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with ymawky. If not, see <https://www.gnu.org/licenses/>.
+// This file is part of ymawky.
+// Copyright (C) 2026 imtomt
+//
+// ymawky is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 3.
+//
+// ymawky is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with ymawky. If not, see <https://www.gnu.org/licenses/>.
 
 #include "defs.S"
 
@@ -20,14 +20,14 @@
 .text
 .align 2
 
-;; handle "DELETE /" method.
-;; input
-;; none, uses .bss data
-;;
-;; output
-;; none, replies either 204 or some error code and quits.
+// handle "DELETE /" method.
+// input
+// none, uses .bss data
+//
+// output
+// none, replies either 204 or some error code and quits.
 delete:
-    mov x0, #0 ;; do not default to index.html. do_paths_check argument
+    mov x0, #0 // do not default to index.html. do_paths_check argument
     bl do_path_checks
     ldr_l x0, filename_str
 
@@ -35,8 +35,8 @@ delete:
     cmp w1, #'*'
     b.eq L400
 
-    ;; at this point you know the drill. if it's a request within CGI_DIR,
-    ;; treat it as a CGI script.
+    // at this point you know the drill. if it's a request within CGI_DIR,
+    // treat it as a CGI script.
     bl check_cgi_path
     b.cc Lcgi
 
@@ -54,31 +54,31 @@ delete:
 
     b L204
 
-;; these are really the same case, tbqh. the errno checks are the same. i use
-;; different label names for clarity when reading hehe
+// these are really the same case, tbqh. the errno checks are the same. i use
+// different label names for clarity when reading hehe
 Ldelete_stat_failed:
 Lunlink_failed:
-    ;; if the file doesn't exist (or was previously deleted), just reply 204
-    ;; since DELETE is idempotent.
+    // if the file doesn't exist (or was previously deleted), just reply 204
+    // since DELETE is idempotent.
     cb eq, x0, #ENOENT, L204
 
-    ;; if it's a dir, say it's not allowed. this could be 405, but i don't
-    ;; want to build Allow: headers properly, lol. at least yet.
+    // if it's a dir, say it's not allowed. this could be 405, but i don't
+    // want to build Allow: headers properly, lol. at least yet.
     cb eq, x0, #EISDIR, L403
-    ;; other various 403s.
+    // other various 403s.
     cb eq, x0, #EACCES, L403
     cb eq, x0, #EPERM, L403
     cb eq, x0, #EROFS, L403
-    ;; file is busy/conflict
+    // file is busy/conflict
     cb eq, x0, #EBUSY, L409
-    ;; symlink
+    // symlink
     cb eq, x0, #ELOOP, L403
 
-    ;; just default to 500
+    // just default to 500
     b L500
 
 
-;; trampolines for conditional branches across files.
+// trampolines for conditional branches across files.
 L204:
     mov x0, #204
     mov x1, #0

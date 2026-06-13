@@ -4,7 +4,7 @@
 
 .text
 options:
-    ;; do not default to index.html
+    // do not default to index.html
     mov x0, #0
     bl do_path_checks
 
@@ -13,7 +13,7 @@ options:
     cmp w1, #'*'
     b.eq L204
 
-    ;; is this a request for a file in CGI_DIR?
+    // is this a request for a file in CGI_DIR?
     bl check_cgi_path
     b.cc Lcgi
 
