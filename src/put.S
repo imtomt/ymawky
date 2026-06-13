@@ -99,14 +99,14 @@ Ltarget_missing:
     str_l x1, filename_tmp_len
 
     // open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)//
-    mov x16, SYS_open
+    mov x8, SYS_open
     ldr_l x0, filename_tmp_str
     mov x1, #O_WRONLY
     orr x1, x1, #O_CREAT
     orr x1, x1, #O_TRUNC
     orr x1, x1, #O_NOFOLLOW_ANY
     mov x2, #0644 // rw-r--r--
-    svc #0x80
+    svc #0
     b.cs Lhfs_err
     mov x25, x0 // save fd into x25
     str_l x0, tmp_fd
@@ -144,11 +144,11 @@ Ltarget_missing:
     str x2, [x0, #16] // offset 16 = it_value.tv_sec
 
     // call setitimer
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0 // ITIMER_REAL
     adr_l x1, put_read_timer
     mov x2, #0
-    svc #0x80
+    svc #0
 
     // now SIGALRM will occur after that period of time. we gotta catch it!
     // NOTE sigaction is a bit odd on MacOS and different than Linux/POSIX.
@@ -207,11 +207,11 @@ Ltarget_missing:
     str x0, [sp, #8]   // sp_tramp = 408 handler. see bigass comment above.
     str wzr, [sp, #16] // sa_mask = 0
     str wzr, [sp, #20] // sa_flags = 0
-    mov x16, SYS_sigaction
+    mov x8, SYS_sigaction
     mov w0, #SIGALRM
     mov x1, sp
     mov x2, #0 // old action = NULL
-    svc #0x80
+    svc #0
     add sp, sp, #32
     // if sigaction fails, it's due to some memory issue. that should always
     // be a 500. i don't want to just silently fail and let any connections go
@@ -222,12 +222,12 @@ Ltarget_missing:
 Lput_readwrite_loop:
     cbz x21, Lput_done
 
-    mov x16, SYS_read
+    mov x8, SYS_read
     ldr_l x0, clientfd
     adr_l x1, buf
     cmp x22, x21
     csel x2, x22, x21, lo
-    svc #0x80
+    svc #0
     b.cs Lput_read_failed
 
     // now x0 contains bytes read
@@ -276,28 +276,28 @@ Lput_close_and_500:
 
 // close and delete the temporary file
 Lput_cleanup_tmp_file:
-    mov x16, SYS_close
+    mov x8, SYS_close
     mov x0, x25
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_unlink
+    mov x8, SYS_unlink
     ldr_l x0, filename_tmp_str
-    svc #0x80
+    svc #0
 
     ret
 
 Lput_sigalrm_handler:
-    mov x16, SYS_close
+    mov x8, SYS_close
     // since Lput_sigalrm_handler is technically sa_tramp for __sigaction,
     // registers like x25 don't actually get preserved. all registers x5-x29
     // are unspecified within sa_tramp, so we can't reliably close() it. that's
     // why we str_l'd it when we opened it.
     ldr_l x0, tmp_fd
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_unlink
+    mov x8, SYS_unlink
     ldr_l x0, filename_tmp_str
-    svc #0x80
+    svc #0
 
     b L408
 
@@ -311,36 +311,36 @@ Lput_read_zero:
     // yeah if content-length is actually 0 now, we're all good.
     b Lput_done
 3:
-    mov x16, SYS_close
+    mov x8, SYS_close
     mov x0, x25
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_unlink
+    mov x8, SYS_unlink
     ldr_l x0, filename_tmp_str
-    svc #0x80
+    svc #0
 
     b L400
 
 Lput_done:
     // disarm the timer
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0
     adr_l x1, put_read_timer
     str xzr, [x1, #16] // offset 16 = it_value.tv_sec
     mov x2, #0
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_close
+    mov x8, SYS_close
     mov x0, x25
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_renameatx_np
+    mov x8, SYS_renameatx_np
     mov x0, #AT_FDCWD
     ldr_l x1, filename_tmp_str
     mov x2, #AT_FDCWD
     ldr_l x3, filename_str
     mov x4, #RENAME_NOFOLLOW_ANY
-    svc #0x80
+    svc #0
     b.cs 2f
 
     cbnz x19, L201
@@ -348,9 +348,9 @@ Lput_done:
 
 2:
     mov x20, x0
-    mov x16, SYS_unlink
+    mov x8, SYS_unlink
     ldr_l x0, filename_tmp_str
-    svc #0x80
+    svc #0
     mov x0, x20
     b handle_fs_error
 

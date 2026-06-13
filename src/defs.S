@@ -82,7 +82,7 @@
 
 // stuff for file.S
 .equ OFF_ST_MODE,    4 // offset for stat struct mode element
-.equ S_IFREG,        0x8000
+.equ S_IFREG,        0x16000
 .equ S_IFDIR,        0x4000
 .equ S_IXUSR,        0x40 // 0o100 = owner exec
 .equ S_IXGRP,        0x08 // 0o010 = group exec

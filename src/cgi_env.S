@@ -129,11 +129,11 @@ set_env_vars:
     stp x25, x26, [sp, #64]
 
     // populate peer_addr struct with the client's information
-    mov x16, SYS_getpeername
+    mov x8, SYS_getpeername
     ldr_l w0, clientfd
     adr_l x1, peer_addr
     adr_l x2, peer_addr_len
-    svc #0x80
+    svc #0
     b.cs L500
 
     adr_l x19, env_var_str_buf

@@ -45,11 +45,11 @@ delete:
     cbnz x0, Ldelete_stat_failed
     cb ne, w1, #S_IFREG, L403
 
-    mov x16, SYS_unlinkat
+    mov x8, SYS_unlinkat
     mov x0, #AT_FDCWD
     ldr_l x1, filename_str
     mov x2, #AT_SYMLINK_NOFOLLOW_ANY
-    svc #0x80
+    svc #0
     b.cs Lunlink_failed
 
     b L204

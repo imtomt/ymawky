@@ -447,8 +447,8 @@ write_chunk:
     mov x22, x0
 
     // copy filename, again
-    adr_l x8, chunk_buf
-    sub x2, x22, x8 // bytes already used
+    adr_l x16, chunk_buf
+    sub x2, x22, x16 // bytes already used
     mov x7, chunk_buf_size
     sub x2, x7, x2 // x2 = remaining destination space
 
@@ -520,8 +520,8 @@ write_chunk_head:
     mov x22, x0
 
     // copy filename
-    adr_l x8, chunk_buf
-    sub x2, x22, x8 // bytes already used
+    adr_l x16, chunk_buf
+    sub x2, x22, x16 // bytes already used
     mov x7, chunk_buf_size
     sub x2, x7, x2 // x2 = remaining destination space
 
@@ -542,8 +542,8 @@ write_chunk_head:
     mov x22, x0
 
     // filename again
-    adr_l x8, chunk_buf
-    sub x2, x22, x8 // bytes already used
+    adr_l x16, chunk_buf
+    sub x2, x22, x16 // bytes already used
     mov x7, chunk_buf_size
     sub x2, x7, x2 // x2 = remaining destination space
 
@@ -573,8 +573,8 @@ write_chunk_head:
     mov x22, x0
 
     // copy filename, again
-    adr_l x8, chunk_buf
-    sub x2, x22, x8 // bytes already used
+    adr_l x16, chunk_buf
+    sub x2, x22, x16 // bytes already used
     mov x7, chunk_buf_size
     sub x2, x7, x2 // x2 = remaining destination space
 
@@ -657,12 +657,12 @@ gde_loop:
     // #8192 is too big for add (0-4096), so we gotta load it into a register
     // first, and do add xN, xN, x0.
     mov x0, #8192
-    mov x16, SYS_getdirentries64
+    mov x8, SYS_getdirentries64
     mov x1, sp
     mov x2, x0 // 8kb buffer
     add x3, sp, x0 // basep
     mov x0, x20
-    svc #0x80
+    svc #0
     b.cs gde_err
     // x0 = bytes written to buffer. if x0 == 0, we're done.
     cbz x0, gde_done
@@ -691,8 +691,8 @@ gde_err:
     mov x19, x0
     bl close
     mov x0, x19
-    mov x16, SYS_exit
-    svc #0x80
+    mov x8, SYS_exit
+    svc #0
 
 gde_done:
     // restore stack space
@@ -714,8 +714,8 @@ gde_done:
 
 close:
     mov x0, x20
-    mov x16, SYS_close
-    svc #0x80
+    mov x8, SYS_close
+    svc #0
 
     b child_end
 

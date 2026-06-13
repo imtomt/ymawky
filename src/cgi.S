@@ -108,22 +108,22 @@ cgi:
 
     // SYS_pipe()
     // NOTE: the pipe() syscall, unlike the libc wrapper, takes no arguments
-    mov x16, #SYS_pipe
-    svc #0x80
+    mov x8, #SYS_pipe
+    svc #0
     b.cs L500
     str_l w0, cgi_stdin_r
     str_l w1, cgi_stdin_w
 
-    mov x16, #SYS_pipe
-    svc #0x80
+    mov x8, #SYS_pipe
+    svc #0
     b.cs L500
     str_l w0, cgi_stdout_r
     str_l w1, cgi_stdout_w
 
 about_to_fork:
     // SYS_fork()
-    mov x16, SYS_fork
-    svc #0x80
+    mov x8, SYS_fork
+    svc #0
     b.cs L500 // just bail if fork fails
 
     cmp x1, #1 // are we the child?
@@ -133,14 +133,14 @@ cgi_parent:
     str_l x0, child_pid // store the pid of the child process XXX
     // we can close() the unused fds
     // close stdin_r
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdin_r
-    svc #0x80
+    svc #0
     b.cs L500
     // close stdout_w
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdout_w
-    svc #0x80
+    svc #0
     b.cs L500
 
     ldr_l x0, request_id
@@ -200,11 +200,11 @@ cgi_parent:
     str x0, [sp, #8]
     str wzr, [sp, #16]
     str wzr, [sp, #20]
-    mov x16, SYS_sigaction
+    mov x8, SYS_sigaction
     mov w0, #SIGALRM
     mov x1, sp
     mov x2, #0
-    svc #0x80
+    svc #0
     add sp, sp, #32
     b.cs L500
 
@@ -217,11 +217,11 @@ cgi_parent:
     str x2, [x0, #16]
 
     // set the actual timer
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0
     adr_l x1, cgi_read_timer
     mov x2, #0
-    svc #0x80
+    svc #0
     b.cs L500
 
     // nothing in buf, so skip to the loop
@@ -242,13 +242,13 @@ Lforward_loop:
     cbz x25, Lforward_done
 
     // read min(remaining, BUF_SIZE) bytes from clientfd
-    mov x16, SYS_read
+    mov x8, SYS_read
     ldr_l w0, clientfd
     adr_l x1, cgi_buf
     mov x2, BUF_SIZE
     cmp x2, x25
     csel x2, x2, x25, lo
-    svc #0x80
+    svc #0
     b.cs Lforward_read_failed
     //b.cs Lread_failed
     b.cs Lhfs_error
@@ -272,18 +272,18 @@ Lforward_read_failed:
 
 Lcgi_read_zero:
     // disarm the timer
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0
     adr_l x1, cgi_read_timer
     str xzr, [x1, #16]
     mov x2, #0
-    svc #0x80
+    svc #0
     // fallthrough
 Lforward_done:
     // close cgi_stdin_w to signal EOF
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
-    svc #0x80
+    svc #0
     b.cs Lhfs_error
 
 Lnothing_to_forward:
@@ -300,7 +300,7 @@ Lread_loop:
     b Lbody_read_loop
 
 Lheader_read_loop:
-    mov x16, SYS_read
+    mov x8, SYS_read
     ldr_l w0, cgi_stdout_r
     adr_l x1, cgi_buf
     add x1, x1, x20 // append to cgi_buf, rather than overwriting
@@ -308,7 +308,7 @@ Lheader_read_loop:
     sub x2, x2, x20 // reduce buf_size by bytes already read
     cbz x2, L502 // if we've filled the whole buffer, gotta give a 502.
                  // BAD gateway!
-    svc #0x80
+    svc #0
     b.cs Lread_failed
     cbz x0, L502 // EOF before terminator also gives 502.
 
@@ -422,11 +422,11 @@ Lgot_ct:
     mov x19, #1
 Lbody_read_loop:
     // stream any remaining body content from cgi script's stdout, to clientfd
-    mov x16, SYS_read
+    mov x8, SYS_read
     ldr_l w0, cgi_stdout_r
     adr_l x1, cgi_buf
     mov x2, BUF_SIZE
-    svc #0x80
+    svc #0
     b.cs Lread_failed
     cbz x0, Lloop_end // hit EOF? we're donezo (in a good way)
 
@@ -446,12 +446,12 @@ Lread_failed:
     b Lerror
 
 Lloop_end:
-    mov x16, SYS_wait4
+    mov x8, SYS_wait4
     mov x0, #-1 // any child
     adr_l x1, status // where to store wstatus
     mov x2, #0 // options
     mov x3, #0 // rusage = NULL
-    svc #0x80
+    svc #0
 
     b child_end
 
@@ -460,53 +460,53 @@ Lloop_end:
 cgi_child:
     // we've gotta close() unused fds
     // close stdin_w
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
-    svc #0x80
+    svc #0
     b.cs Lchild_error
     // close stdout_r
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdout_r
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
     // duplicate the file descriptors to be actually stdin/out
-    mov x16, SYS_dup2
+    mov x8, SYS_dup2
     ldr_l w0, cgi_stdin_r // pipe fd
     mov x1, #0 // stdin
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
-    mov x16, SYS_dup2
+    mov x8, SYS_dup2
     ldr_l w0, cgi_stdout_w // pipe fd
     mov x1, #1 // stdout
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
     // now that cgi_stdin/out_r/w has been duplicated to just stdin/out, we can
     // close the fds from pipe.
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdin_r
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdout_w
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
     // we gotta chdir into the right directory
-    mov x16, #12 // SYS_chdir
+    mov x8, #12 // SYS_chdir
     adr_l x0, script_path_buf
-    svc #0x80
+    svc #0
     b.cs Lchild_error
 
     // FINALLY we can FUCKING EXECVE
-    mov x16, SYS_execve
+    mov x8, SYS_execve
     adr_l x0, script_name_buf
     adr_l x1, argv
     adr_l x2, env_var_ptr_buf
-    svc #0x80
+    svc #0
 
     // execve() is supposed to replace this child process with that one. if we
     // return here after execve, something has gone horribly wrong... so just
@@ -514,9 +514,9 @@ cgi_child:
     b Lchild_error
 
 Lchild_error:
-    mov x16, SYS_exit
+    mov x8, SYS_exit
     // x0 is usually errno now
-    svc #0x80
+    svc #0
 
 Lerror:
     b child_end
@@ -654,25 +654,25 @@ kill_kid:
     cbz x1, 1f // if child_pid is 0, it hasn't set yet. skip the kill. we don't
                // want to kill PID 0, since that would kill ymawky. lol
 
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdout_r
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_kill
+    mov x8, SYS_kill
     ldr_l x0, child_pid
     mov x1, #15 // SIGTERM the child
-    svc #0x80
+    svc #0
 
-    mov x16, SYS_wait4
+    mov x8, SYS_wait4
     mov x0, #-1
     adr_l x1, status
     mov x2, #0
     mov x3, #0
-    svc #0x80
+    svc #0
 1:
     ret
 

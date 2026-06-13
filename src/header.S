@@ -473,11 +473,11 @@ reply_status:
 
     // ok now err_page_buf should be something like "err/404.html". now we
     // gotta basically GET that shit.
-    mov x16, SYS_open
+    mov x8, SYS_open
     adr_l x0, err_page_buf
     mov x1, #0 // RDONLY
     orr x1, x1, #O_NOFOLLOW_ANY // can't be too careful now can we?
-    svc #0x80
+    svc #0
 
     b.cs sc_err
     mov x23, x0 // save the fd
@@ -500,14 +500,14 @@ reply_status:
     bl build_header
 
     // mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0)
-    mov x16, SYS_mmap
+    mov x8, SYS_mmap
     mov x0, #0
     mov x1, x24
     mov x2, #1 // PROT_READ
     mov x3, #2 // MAP_PRIVATE
     mov x4, x23 // from open()
     mov x5, #0 // offset
-    svc #0x80
+    svc #0
 
     b.cs sc_err
 
@@ -524,10 +524,10 @@ reply_status:
     mov x2, x24
     bl write_all
     // munmap the file now
-    mov x16, SYS_munmap
+    mov x8, SYS_munmap
     mov x0, x25
     mov x1, x24
-    svc #0x80
+    svc #0
     b sc_epilogue
 
 sc_err:
@@ -547,25 +547,25 @@ sc_err:
 
 sc_epilogue:
     // write the \n\n>>>\n to indicate data we're sending
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, arrows_out
     mov x2, arrows_out_len
-    svc #0x80
+    svc #0
 
     // write the header to stdout
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, header_buf
     ldr_l x2, header_len
-    svc #0x80
+    svc #0
 
     cmn x23, #1
     b.eq 1f
 
-    mov x16, SYS_close
+    mov x8, SYS_close
     mov x0, x23
-    svc #0x80
+    svc #0
 1:
     cbnz x27, 3f // if x27 (x1) is nonzero, ret instead of branching to child_end
 2:

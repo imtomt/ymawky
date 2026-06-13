@@ -102,8 +102,8 @@ make_tmp_file:
     mov x21, x0 // save pointer with offset from memcpy
 
     // getpid()
-    mov x16, SYS_getpid
-    svc #0x80
+    mov x8, SYS_getpid
+    svc #0
     // now x0 contains the pid
 
     // itoa() on getpid()

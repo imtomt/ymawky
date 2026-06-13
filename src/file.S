@@ -118,10 +118,10 @@ unknown_ct: .ascii "text/plain; charset=utf-8"
 // x3 -> executable? 1 = yes, 0 = no
 stat_fd:
     sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
-    mov x16, SYS_fstat64
+    mov x8, SYS_fstat64
 
     mov x1, sp // stat buffer, on the stack
-    svc #0x80
+    svc #0
     b.cs Lstat_fd_failed
 
     // read st_mode (halfword at offset 4 in stat buffer)
@@ -167,10 +167,10 @@ Lstat_fd_end:
 // x3 -> executable? 1 = yes, 0 = no
 stat_path:
     sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
-    mov x16, SYS_stat64
+    mov x8, SYS_stat64
     // x0 is already set
     mov x1, sp // stat buffer, on the stack
-    svc #0x80
+    svc #0
     b.cs Lstat_path_failed
 
     // read st_mode (halfword at offset 4 in stat buffer)

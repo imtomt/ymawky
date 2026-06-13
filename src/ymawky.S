@@ -145,52 +145,52 @@ _main:
     strh w0, [x1, #2]
 
 skip_argv:
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, ymawky_connecting
     mov x2, ymawky_connecting_len
-    svc #0x80
+    svc #0
 
     // socket(AF_INET, SOCK_STREAM, 0)
-    mov x16, SYS_socket
+    mov x8, SYS_socket
     mov x0, #2 // AF_INET
     mov x1, #1 // SOCK_STREAM
     mov x2, #0 // nothin, TCP
-    svc #0x80
+    svc #0
     b.cs fatal_exit
 
     str_l x0, sockfd
 
     // setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &value, 4)
-    mov x16, SYS_setsockopt
+    mov x8, SYS_setsockopt
     ldr_l x0, sockfd
     mov x1, #0xFFFF // SOL_SOCKET = 0xFFFF
     mov x2, #4 // SO_REUSEADDR = 4
     adr_l x3, one
     mov x4, #4 // sizeof int
-    svc #0x80
+    svc #0
     b.cs exit
 
     // bind(sockfd, &addr, 16)
-    mov x16, SYS_bind
+    mov x8, SYS_bind
     ldr_l x0, sockfd
     adr_l x1, addr
     mov x2, #16 // the struct is 16 bytes
-    svc #0x80
+    svc #0
     b.cs exit
 
     // listen(sockfd, 5)
-    mov x16, SYS_listen
+    mov x8, SYS_listen
     ldr_l x0, sockfd
     mov x1, #5
-    svc #0x80
+    svc #0
     b.cs exit
 
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, ymawky_connected
     mov x2, ymawky_connected_len
-    svc #0x80
+    svc #0
 
     // set up SIG_IGN on SIGCHLD, with SA_NOCLDWAIT to tell the kernel to auto
     // reap children. previously zombies were piling up :(
@@ -202,11 +202,11 @@ skip_argv:
     str wzr, [sp, #16] // sa_mask = 0
     str x1, [sp, #20] // sa_flags = SA_NOCLDWAIT
 
-    mov x16, SYS_sigaction
+    mov x8, SYS_sigaction
     mov w0, #SIGCHLD
     mov x1, sp
     mov x2, #0 // old action = NULL
-    svc #0x80
+    svc #0
     add sp, sp, #32
     b.cs exit
 
@@ -218,21 +218,21 @@ skip_argv:
     str wzr, [sp, #16] // sa_mask = 0
     str wzr, [sp, #20] // sa_flags = 0
 
-    mov x16, SYS_sigaction
+    mov x8, SYS_sigaction
     mov w0, #13 //#SIGPIPE
     mov x1, sp
     mov x2, #0
-    svc #0x80
+    svc #0
     add sp, sp, #32
     b.cs exit
 
 loop:
     // accept(sockfd, NULL, NULL)
-    mov x16, SYS_accept
+    mov x8, SYS_accept
     ldr_l x0, sockfd
     mov x1, #0
     mov x2, #0
-    svc #0x80
+    svc #0
     b.cs loop // loop if accept() failed.
 
     // store x0 (return of accept) in clientfd
@@ -242,8 +242,8 @@ loop:
     // fork -- it's much easier to debug with lldb if there's no forking :(
     cbnz x28, child
 
-    mov x16, SYS_getpid
-    svc #0x80
+    mov x8, SYS_getpid
+    svc #0
     // x0 now contains pid
 
     // gotta check if number of processes is > MAX_PROCS. luckily, apple has an
@@ -251,14 +251,14 @@ loop:
     // this process into a buffer. in the buffer, each child pid is stored as a
     // 32-bit integers.
     sub sp, sp, #2048 // allocate a bit of stack space for the proc_info buf
-    mov x16, SYS_proc_info
+    mov x8, SYS_proc_info
     mov x2, x0 // our pid. wondering why we called gitpid() a minute ago? //)
     mov x0, PROC_INFO_CALL_LISTPIDS
     mov x1, PROC_PPID_ONLY
     mov x3, #0
     mov x4, sp
     mov x5, #2048
-    svc #0x80
+    svc #0
 
     // proc_info returns the number of bytes written to the stack. if we divide
     // by 4, it tells us the total number of procs.
@@ -278,8 +278,8 @@ loop:
 
 8:
     // fork()
-    mov x16, SYS_fork
-    svc #0x80
+    mov x8, SYS_fork
+    svc #0
     b.cs 2f // fork failed :( fuck :( close and loop again :(
 
     // if we're in the child, go there
@@ -293,48 +293,48 @@ loop:
     b.eq child
 2:
     // otherwise close clientfd and loop
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l x0, clientfd
-    svc #0x80
+    svc #0
 
     b loop
 
 
 child:
     // close sockfd
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l x0, sockfd
-    svc #0x80
+    svc #0
 
     // setsockopt() with a SO_RCVTIMEO timeout from config.S, to prevent
     // connections from staying open indefinitely
-    mov x16, SYS_setsockopt
+    mov x8, SYS_setsockopt
     ldr_l x0, clientfd
     mov x1, #0xFFFF // SOL_SOCKET
     mov x2, #0x1006 // SO_RCVTIMEO = 0x1006
     adr_l x3, rcv_timeout
     mov x4, #16 // struct timeval is 16 bytes
-    svc #0x80
+    svc #0
     b.cs child_end
 
     // setsockopt(), SO_NOSIGPIPE
-    mov x16, SYS_setsockopt
+    mov x8, SYS_setsockopt
     ldr_l x0, clientfd
     mov x1, 0xFFFF // SOL_SOCKET
     mov x2, 0x1022 // SO_NOSIGPIPE
     adr_l x3, one
     mov x4, #4
-    svc #0x80
+    svc #0
     b.cs child_end
 
     // arm timer before reading
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0 // ITIMER_REAL
     adr_l x1, read_timer
     mov x2, #HEADER_REQ_TIMEOUT_SECS
     str x2, [x1, #16] // offset 16 = it_value.tv_sec
     mov x2, #0
-    svc #0x80
+    svc #0
 
     // set a signal handler for SIGALRM, so we can respond with 408 if the
     // connection times out during the header. see the long ass comment in
@@ -348,24 +348,24 @@ child:
     str wzr, [sp, #16] // sa_mask = 0
     str wzr, [sp, #20] // sa_flags = 0
 
-    mov x16, SYS_sigaction
+    mov x8, SYS_sigaction
     mov w0, #SIGALRM
     mov x1, sp
     mov x2, #0 // old action = NULL
-    svc #0x80
+    svc #0
     add sp, sp, #32
     b.cs L500
 
     // read(client_fd, buffer, buffer_size)
     mov x7, #0
 read_loop:
-    mov x16, SYS_read
+    mov x8, SYS_read
     ldr_l x0, clientfd
     adr_l x1, buf
     add x1, x1, x7 // account for buffer being partially filled
     mov x22, #BUF_SIZE
     sub x2, x22, x7 // BUF_SIZE - bytes_read
-    svc #0x80
+    svc #0
     b.cs read_failed
     mov x22, x0 // stash number of bytes read() got in x22
 
@@ -422,30 +422,30 @@ read_failed:
 
 2:
     // disarm timer
-    mov x16, SYS_setitimer
+    mov x8, SYS_setitimer
     mov x0, #0
     adr_l x1, read_timer
     str xzr, [x1, #16] // offset 16 = it_value.tv_sec
     mov x2, #0
-    svc #0x80
+    svc #0
 
     // let's make sure buf is NULL terminated
     adr_l x1, buf
     strb wzr, [x1, x24] // x24 -> length of bytes read
 
     // write \n\n<<<\n to stdout to mark a header we're receiving
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, arrows_in
     mov x2, arrows_in_len
-    svc #0x80
+    svc #0
 
     // this just writes the request to stdout
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, buf
     mov x2, x23
-    svc #0x80
+    svc #0
 
     adr_l x0, buf
     mov x1, x23
@@ -553,46 +553,46 @@ Lpost_method:
 
 child_end:
     // close(clientfd)
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l x0, clientfd
-    svc #0x80
+    svc #0
 
     ldr_l x0, file_des
     cmn x0, #1
     b.eq 1f
-    mov x16, SYS_close
+    mov x8, SYS_close
     // x0 is set
-    svc #0x80
+    svc #0
 1:
     // This is always for children, so let's exit. the parent will loop
-    mov x16, SYS_exit
+    mov x8, SYS_exit
     mov x0, #0
-    svc #0x80
+    svc #0
 
 
 exit:
-    mov x16, SYS_write
+    mov x8, SYS_write
     mov x0, #1
     adr_l x1, ymawky_shutdown
     mov x2, ymawky_shutdown_len
-    svc #0x80
+    svc #0
 
     // shutdown(sockfd, SHUT_RDRW)
-    mov x16, SYS_shutdown
+    mov x8, SYS_shutdown
     ldr_l x0, sockfd
     mov x1, #2 // SHUT_RDRW
-    svc #0x80
+    svc #0
 
     // close(sockfd)
-    mov x16, SYS_close
+    mov x8, SYS_close
     ldr_l x0, sockfd
-    svc #0x80
+    svc #0
     // fallthrough
 fatal_exit:
     // exit(1)
-    mov x16, SYS_exit
+    mov x8, SYS_exit
     mov x0, #1
-    svc #0x80
+    svc #0
 
 
 // verify the header has an HTTP version and that it's 1.1 or 1.0

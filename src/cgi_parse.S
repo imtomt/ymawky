@@ -104,7 +104,7 @@ parse_cgi_header_end:
     mov x7, #0
 
     adr_l x2, header_end_crlf
-    adr_l x8, header_end_lflf
+    adr_l x16, header_end_lflf
 
 Lpche_loop:
     cmp x5, x1
@@ -131,7 +131,7 @@ Lpche_crlf_incorrect:
     mov x6, #1
     // fallthrough
 Lpche_check_lflf:
-    ldrb w4, [x8, x7]
+    ldrb w4, [x16, x7]
     cmp w3, w4
     b.eq Lpche_lflf_correct
     b Lpche_lflf_incorrect

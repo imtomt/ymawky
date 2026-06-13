@@ -71,11 +71,11 @@ gbp:
     bl check_cgi_path
     b.cc Lcgi // branch to cgi handler if so
 
-    mov x16, SYS_open
+    mov x8, SYS_open
     ldr_l x0, filename_str
     mov x1, #0 // RDONLY
     orr x1, x1, #O_NOFOLLOW_ANY
-    svc #0x80
+    svc #0
     b.cs Lhfs_err // if the carry flag is set, open() failed so handle it
 
     // save the file descriptor
@@ -248,14 +248,14 @@ Lmmap_start:
     cbz x19, 1f
 
     // mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0)
-    mov x16, SYS_mmap
+    mov x8, SYS_mmap
     mov x0, #0
     mov x1, x19
     mov x2, #1 // PROT_READ
     mov x3, #2 // MAP_PRIVATE
     ldr_l x4, file_des // file descriptor
     mov x5, #0 // offset
-    svc #0x80
+    svc #0
     b.cs L500
     // x0 is now the pointer to memory for the file
 
@@ -288,10 +288,10 @@ Lmmap_start:
     b Lwrite_done
 
 Lwrite_done:
-    mov x16, SYS_munmap
+    mov x8, SYS_munmap
     mov x0, x12
     mov x1, x19
-    svc #0x80
+    svc #0
     // if munmap fails, b.cs would just branch to Lget_end anyway. so just
     // fall through either way.
 
