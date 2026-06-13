@@ -41,6 +41,12 @@ read_timer:
     .long 0   // it_value.tv_usec
     .long 0   // -- padding --
 
+.balign 8
+ignore_signal:
+    .quad 1   // sa_handler = SIG_IGN
+    .quad 0x3 // sa_flags = SA_NOCLDWAIT | SA_NOCLDSTOP
+    .quad 0   // sa_mask = nothin
+
 .align 2 // one is a .word (4 bytes)
 one: .word 1
 
@@ -194,37 +200,25 @@ skip_argv:
 
     // set up SIG_IGN on SIGCHLD, with SA_NOCLDWAIT to tell the kernel to auto
     // reap children. previously zombies were piling up :(
-    sub sp, sp, #32
-    mov x0, #SIG_IGN
-    mov x1, #SA_NOCLDWAIT
-    str x0, [sp, #0]  // sa_handler = SIG_IGN
-    str x0, [sp, #8]   // sp_tramp
-    str wzr, [sp, #16] // sa_mask = 0
-    str x1, [sp, #20] // sa_flags = SA_NOCLDWAIT
 
-    mov x8, SYS_sigaction
-    mov w0, #SIGCHLD
-    mov x1, sp
+    mov x8, SYS_rt_sigaction
+    mov x0, #SIGCHLD
+    adr_l x1, ignore_signal
     mov x2, #0 // old action = NULL
+    mov x3, #8
     svc #0
-    add sp, sp, #32
-    b.cs exit
+    cmn x0, #4095
+    b.hi exit
 
     // ignore SIGPIPE so write() returns EPIPE instead of killing us
-    sub sp, sp, #32
-    mov x0, #SIG_IGN
-    str x0, [sp, #0] // sa_handler = SIG_IGN
-    str x0, [sp, #8] // sa_tramp = SIG_IGN
-    str wzr, [sp, #16] // sa_mask = 0
-    str wzr, [sp, #20] // sa_flags = 0
-
-    mov x8, SYS_sigaction
-    mov w0, #13 //#SIGPIPE
-    mov x1, sp
+    mov x8, SYS_rt_sigaction
+    mov w0, #SIGPIPE
+    adr_l x1, ignore_signal
     mov x2, #0
+    mov x3, #8
     svc #0
-    add sp, sp, #32
-    b.cs exit
+    cmn x0, #4095
+    b.hi exit
 
 loop:
     // accept(sockfd, NULL, NULL)
@@ -344,14 +338,14 @@ child:
     sub sp, sp, #32
     adr_l x0, L408
     str x0, [sp, #0]  // sa_handler
-    str x0, [sp, #8]   // sp_tramp = 408 handler. see bigass comment above.
-    str wzr, [sp, #16] // sa_mask = 0
-    str wzr, [sp, #20] // sa_flags = 0
+    str wzr, [sp, #8] // sa_flags
+    str wzr, [sp, #16] // sa_mask
 
-    mov x8, SYS_sigaction
+    mov x8, SYS_rt_sigaction
     mov w0, #SIGALRM
     mov x1, sp
-    mov x2, #0 // old action = NULL
+    mov x2, #0
+    mov x3, #8
     svc #0
     add sp, sp, #32
     b.cs L500

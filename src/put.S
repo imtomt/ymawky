@@ -150,73 +150,26 @@ Ltarget_missing:
     mov x2, #0
     svc #0
 
-    // now SIGALRM will occur after that period of time. we gotta catch it!
-    // NOTE sigaction is a bit odd on MacOS and different than Linux/POSIX.
-    // POSIX: (http://git.musl-libc.org/cgit/musl/tree/include/signal.h#n169)
-    //   struct sigaction {
-    //       union {
-    //           void (*sa_handler)(int)//
-    //           void (*sa_sigaction)(int, siginfo_t *, void *)//
-    //       } __sa_handler//
-    //       sigset_t sa_mask//
-    //       int sa_flags//
-    //       void (*sa_restorer)(void)//
-    //   }//
-    //
-    // Darwin: (https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/sys/signal.h#L374-L379)
-    //   struct  __sigaction {
-    //     union __sigaction_u __sigaction_u//
-    //	   void    (*sa_tramp)(void *, int, int, siginfo_t *, void *)//
-    //	   sigset_t sa_mask//
-    //	   int     sa_flags//
-    //   }//
-    // In POSIX systems, the kernel jumps directly to the handler. In Darwin
-    // (MacOS), the kernel jumps first to sa_tramp. This is usually handled by
-    // libc -- sa_tramp is responsible for calling your handler and then
-    // executing the sigreturn syscall, which restores the thread's previous
-    // state: registers, pc, sp, etc.
-    // The sigaction syscall in Darwin requires this struct, including the
-    // sa_tramp member. Since we aren't gonna be using libc, we can actually
-    // do something kind of cool and instead use sa_tramp *as* the handler
-    // itself, branching to 408 (Request Timeout).
-    // We have to ensure that bytes 0-7 are not 0 or 1, however.
-    // in bsd/kern/kern_sig.c, setsigvec() checks sa->sa_handler against a few
-    // values. If sa_handler (bytes 0-7) is SIG_IGN (1LL), the signal is
-    // ignored. If it's SIG_DFL (0LL), the program terminates by default.
-    // If it's anything else, sa_tramp is executed which does kernel shit and
-    // then executes the code sa_handler is pointing to, typically. In my code
-    // though, it just does the handling itself.
-    // https://github.com/opensource-apple/xnu/blob/0a798f6738bc1db01281fc08ae024145e84df927/bsd/kern/kern_sig.c#L643
-    // HOWEVER!! Since we never call sigreturn or sigprocmask, and sp gets
-    // fucked, we can never actually return to the main loop. if we do it
-    // like this. Since a signal is blocked while it's being handled, SIGALRM
-    // will be permanently blocked for the rest of this process's life, and it
-    // won't fire again.
-    // But that's really fine, if you think about it, since 408 sends the code
-    // and closes clientfd, then exits. So it's not a problem. But something
-    // to keep in mind.
-    //
-    // TL//DR: sigaction works differently in MacOS than Linux. this is janky
-    // as fuck and hacky but also perfectly fine and good.
-    // if you ever want to port ymawky to other systems, this is gonna be a
-    // major difference.
-    // set up the __sigaction struct
+    // set up the stack for rt_sigaction
     adr_l x0, Lput_sigalrm_handler
-    sub sp, sp, #32 // allocate space on the stack
-    str x0, [sp, #0]  // sa_handler
-    str x0, [sp, #8]   // sp_tramp = 408 handler. see bigass comment above.
-    str wzr, [sp, #16] // sa_mask = 0
-    str wzr, [sp, #20] // sa_flags = 0
-    mov x8, SYS_sigaction
+    sub sp, sp, #32
+    str x0, [sp, #0]   // sa_handler
+    str xzr, [sp, #8]  // sa_flags
+    str wzr, [sp, #16] // sa_mask
+
+    // rt_sigaction syscall is slightly different than the libc sigaction() func
+    mov x8, SYS_rt_sigaction
     mov w0, #SIGALRM
     mov x1, sp
-    mov x2, #0 // old action = NULL
+    mov x2, #0 // old action, we don't give a shit so it's null
+    mov x3, #8 // this is sizeof(sigset_t), which is 8 on arm64
     svc #0
     add sp, sp, #32
     // if sigaction fails, it's due to some memory issue. that should always
     // be a 500. i don't want to just silently fail and let any connections go
     // un-timedout, so just throw a 500 and take the shit.
-    b.cs Lput_close_and_500
+    cmn x0, #4095
+    b.hi Lput_close_and_500
 
     mov x22, #BUF_SIZE // from defs.S, 16KB
 Lput_readwrite_loop:
