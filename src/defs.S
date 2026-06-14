@@ -34,6 +34,7 @@
 .endm
 
 
+.equ SYS_chdir,         49
 .equ SYS_exit,          93
 .equ SYS_clone,         220
 .equ SYS_read,          63

@@ -180,7 +180,7 @@ stat_path:
     // read st_mode (halfword at offset 4 in stat buffer)
     // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
     // NOTE at offset 4. if that ever changes, look here!
-    ldrh w1, [sp, #4]
+    ldrh w1, [sp, #OFF_ST_MODE]
 
     // same shit as before you know the deal
     tst w1, #S_IXUSR

@@ -377,7 +377,6 @@ sev_add_kv_var:
     strb wzr, [x0], #1
 
 1:
-    mov x0, #0
     b 3f
 2:
     mov x0, #-1
@@ -404,7 +403,6 @@ sev_add_const_var:
     // store string in env_var_str_buf
     bl memcpy
 1:
-    mov x0, #0
     b 3f
 2:
     mov x0, #-1
@@ -416,10 +414,7 @@ sev_add_const_var:
 // the callee-saved registers without me worrying about it :)
 sev_failure:
     mov x0, #-1
-    b 1f
 sev_epilogue:
-    mov x0, #0
-1:
     ldp x25, x26, [sp, #64]
     ldp x23, x24, [sp, #48]
     ldp x21, x22, [sp, #32]

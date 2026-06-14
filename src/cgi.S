@@ -519,7 +519,7 @@ cgi_child:
     svc #0
 
     // we gotta chdir into the right directory
-    mov x8, #12 // SYS_chdir
+    mov x8, SYS_chdir
     adr_l x0, script_path_buf
     svc #0
     b_err Lchild_error
