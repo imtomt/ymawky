@@ -152,10 +152,6 @@ get:
     bl parse_range
     b_err Lno_range
 
-    // here there be range
-    // empty file has no satisfiable range
-    //cbz x19, L416
-
     mov x22, x0
     mov x23, x1
 

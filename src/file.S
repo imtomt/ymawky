@@ -124,10 +124,7 @@ stat_fd:
     svc #0
     b_err Lstat_fd_failed
 
-    // read st_mode (halfword at offset 4 in stat buffer)
-    // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
-    // NOTE at offset 4. if that ever changes, look here!
-    //ldrh w1, [sp, #4]
+    // read st_mode
     ldr w1, [sp, #OFF_ST_MODE]
 
     // here we check if the file is executable, so we can treat it as a CGI

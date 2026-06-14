@@ -118,16 +118,12 @@ cgi:
     mov x1, O_CLOEXEC
     svc #0
     b_err L500
-    //str_l w0, cgi_stdin_r
-    //str_l w1, cgi_stdin_w
 
     mov x8, #SYS_pipe2
     adr_l x0, stdout_pipe
     mov x1, O_CLOEXEC
     svc #0
     b_err L500
-    //str_l w0, cgi_stdout_r
-    //str_l w1, cgi_stdout_w
 
 about_to_fork:
     // SYS_clone()
@@ -255,7 +251,6 @@ cgi_parent:
 
     // write whatever body is already present in buf, to cgi_stdin_w
     ld_w_pipe w0, stdin_pipe
-    //ldr_l w0, cgi_stdin_w
     adr_l x1, buf
     add x1, x1, x20
     mov x2, x24
@@ -265,7 +260,6 @@ cgi_parent:
 Lforward_loop:
     // remaining = content_length - bytes_so_far
     sub x25, x23, x24
-    //cbz x25, Lcgi_read_zero // nothin more to forward!
     cbz x25, Lforward_done
 
     // read min(remaining, BUF_SIZE) bytes from clientfd
@@ -282,7 +276,6 @@ Lforward_loop:
 
     // now forward those bytes to cgi_stdin_w
     ld_w_pipe w0, stdin_pipe
-    //ldr_l w0, cgi_stdin_w
     adr_l x1, cgi_buf
     mov x2, x26
     bl write_all
@@ -309,7 +302,6 @@ Lforward_done:
     // close cgi_stdin_w to signal EOF
     mov x8, SYS_close
     ld_w_pipe w0, stdin_pipe
-    //ldr_l w0, cgi_stdin_w
     svc #0
     b_err Lhfs_error
 
@@ -329,7 +321,6 @@ Lread_loop:
 Lheader_read_loop:
     mov x8, SYS_read
     ld_r_pipe w0, stdout_pipe
-    //ldr_l w0, cgi_stdout_r
     adr_l x1, cgi_buf
     add x1, x1, x20 // append to cgi_buf, rather than overwriting
     mov x2, BUF_SIZE
@@ -452,7 +443,6 @@ Lgot_ct:
 Lbody_read_loop:
     // stream any remaining body content from cgi script's stdout, to clientfd
     mov x8, SYS_read
-    //ldr_l w0, cgi_stdout_r
     ld_r_pipe w0, stdout_pipe
     adr_l x1, cgi_buf
     mov x2, BUF_SIZE
@@ -488,22 +478,6 @@ Lloop_end:
 
 // ok fine we're a kid! yay! *plays on a swingset*
 cgi_child:
-    //[cgi_stdin_pipe] (offset 0) = read end, [cgi_stdin_pipe, #4] (offset 4) = write end.
-    // we've gotta close() unused fds
-    // close stdin_w
-//    mov x8, SYS_close
-    //ldr_l w0, cgi_stdin_w
-//    ld_w_pipe w0, stdin_pipe
-//    svc #0
-//    b_err Lchild_error
-
-    // close stdout_r
-//    mov x8, SYS_close
-    //ldr_l w0, cgi_stdout_r
-//    ld_r_pipe w0, stdout_pipe
-//    svc #0
-//    b_err Lchild_error
-
     // duplicate the file descriptors to be actually stdin/out
     mov x8, SYS_dup3
     ldr w0, stdin_pipe

@@ -367,7 +367,6 @@ Lheader_too_big:
 
 Lbh_done:
     str_l x14, header_len
-    //cmn xzr, xzr // clear carry
     b Lbh_epilogue
 
 Lbh_epilogue:

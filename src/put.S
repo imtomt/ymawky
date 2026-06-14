@@ -297,7 +297,6 @@ Lput_done:
     mov x2, #AT_FDCWD
     ldr_l x3, filename_str
     mov x4, #0
-    //mov x4, #RENAME_NOFOLLOW_ANY
     svc #0
     b_err 2f
 

@@ -117,16 +117,11 @@ sockfd:             .skip 8
 .balign 4
 
 _start:
-    //mov x28, #0
     // did we get an argument
     ldr x0, [sp]
     cmp x0, #1
     b.le skip_argv
 
-//    ldr x9, [x1, #8] // argv[1] pointer
-//    ldrb w0, [x9] // first byte of string
-    //ldr x1, [x0, #4]
-    //add x0, x0, #4
     ldr x0, [sp, #8]
     // if it's less than 'A' (0x41), it's probably a number. so if it is, just
     // treat it as a port. otherwise, if it's > A (so any letter), let's treat
@@ -139,9 +134,6 @@ _start:
     b skip_argv
 
 2:
-    // get argv0.
-    //ldr x0, [x1, #8]
-    //mov x0, x1
     // x0 is already argv[1]
     bl atoi
     b_err fatal_exit

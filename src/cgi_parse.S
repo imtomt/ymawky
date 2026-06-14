@@ -52,7 +52,6 @@ check_cgi_path:
     // "GET /cgi-bin", we want that to be treated as a CGI request, rather than
     // standard GET. we don't allow directory listing on cgi-bin/.
     ldr_l x0, filename_len
-    //mov x1, #(cgi_dir_len - 1)
     mov x1, cgi_dir_len
     sub x1, x1, #1
     cmp x0, x1
@@ -69,7 +68,6 @@ check_cgi_path:
     // check if it matches CGI_DIR, without the slash
     ldr_l x0, filename_str
     adr_l x1, cgi_dir
-    //mov x2, #(cgi_dir_len - 1) // account for possible missing /
     mov x2, cgi_dir_len
     sub x2, x2, #1
     bl streqn_i
@@ -152,7 +150,6 @@ Lpche_lflf_correct:
 Lpche_lflf_incorrect:
     mov x7, #0 // reset index into header_end_lflf
     // fallthrough
-
 Lpche_advance:
     add x5, x5, #1
     b Lpche_loop
@@ -311,6 +308,7 @@ get_script_path_elements:
     b.eq 2f
     cmp x4, script_name_buf_size
     b.eq 2f
+
     ldrb w2, [x19, x0]
     strb w2, [x1, x4]
     add x0, x0, #1

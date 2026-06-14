@@ -102,13 +102,10 @@ append_literal:
     // x2 is already set by caller
     bl memcpy
 
-    //cmn xzr, xzr
     b 2f
 1:
-    //mov x0, x19
     mov x0, #-1
     // fallthrough
-
 2:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #32
@@ -213,7 +210,6 @@ href_percent:
     b href_encode_loop
 
 href_overflow:
-    //mov x0, x19
     mov x0, #-1
     sub x1, x19, x23
     b href_epilogue
@@ -221,7 +217,6 @@ href_overflow:
 href_done:
     mov x0, x19
     sub x1, x19, x23
-    //cmn xzr, xzr // clear carry
     // fallthrough
 href_epilogue:
     ldr x25, [sp, #64]
@@ -314,18 +309,14 @@ Lcopy_encoding:
     b 1b
 
 Loverflow:
-    //mov x0, x19 // pointer to destination, offset
     mov x0, #-1
     sub x1, x19, x23 // bytes written
-    //cmp xzr, xzr // set carry
     b 2f
 
 Ldone:
     mov x0, x19 // pointer to destination, offset
     sub x1, x19, x23 // bytes written
-    //cmn xzr, xzr // clear carry
     // fallthrough
-
 2:
     ldr x23, [sp, #48]
     ldp x21, x22, [sp, #32]
@@ -655,9 +646,8 @@ Lno_strip:
 gde_loop:
     // #8192 is too big for add (0-4096), so we gotta load it into a register
     // first, and do add xN, xN, x0.
-    mov x0, #8192
-    //mov x8, SYS_getdirentries64
     mov x8, SYS_getdents64
+    mov x0, #8192
     mov x1, sp
     mov x2, x0 // 8kb buffer
     add x3, sp, x0 // basep
@@ -682,7 +672,6 @@ gde_entry:
     bl strlen
     mov x1, x0 // no name length member of the struct, so we gotta use strlen
     add x0, x19, #OFF_D_NAME
-    //ldrh w1, [x19, #OFF_D_NAMLEN]
     ldrb w2, [x19, #OFF_D_TYPE]
     bl write_chunk
 

@@ -407,7 +407,6 @@ pr_got_range:
     // if we're here, the ranges are good!
     mov x0, x25
     mov x1, x26
-    //cmn xzr, xzr
     b pr_epilogue
 
 pr_no_range:
@@ -788,13 +787,12 @@ Lparse_end:
     mov x2, #0
     mov x3, #0
 
-    cbz x25, 9f // if x25 is NULL, just skip straight to the end
+    cbz x25, Lparse_epilogue // if x25 is NULL, just skip straight to the end
 
     // otherwise, we have to extract the parse string now.
     mov x20, x0 // save x0
     mov x21, x1 // and x1
     // x22 points at the index that contains the ?, rather than one-past it
-    //mov x22, x25
     sub x22, x25, #1
 
     adr_l x0, filename_buf
@@ -818,12 +816,7 @@ Lparse_end:
 2:
     mov x0, x20 // restore x0
     strb wzr, [x0, x22] // NULL the ? in filename
-    //mov x1, x21 // and x1
-    //sub x1, x21, x25 // filename length = total length - query string offset
     mov x1, x22
-9:
-qsrchdone:
-    //cmn xzr, xzr // clear carry in case. it gets set in the other error paths.
 Lparse_epilogue:
     // restore the link register and ret
     ldp x24, x25, [sp, #48]

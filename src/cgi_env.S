@@ -142,8 +142,6 @@ set_env_vars:
 
     mov x21, #0 // index into string buffer
     mov x22, #0 // index into pointer buffer
-    //mov x23, env_var_str_buf_size
-    //mov x24, env_var_ptr_buf_size
 
     // GATEWAY_INTERFACE=CGI/1.1
     add_const_var gateway_interface, gateway_interface_len
@@ -461,15 +459,13 @@ Lport:
     add x2, x2, #1
     b 1b
 2:
-    //fallthrough to Lip. x24 now contains bytes written into port buffer
+    // fallthrough to Lip. x24 now contains bytes written into port buffer
 
     add x19, x19, #2 // offset for sin_addr in addr struct (+4 total, +2+2)
     mov x20, x23
     mov x21, #0
     mov x22, #0
 Lip:
-    //adr_l x19, peer_addr
-
     cmp x22, #4
     b.hs Ldone
 
