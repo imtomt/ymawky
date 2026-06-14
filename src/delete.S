@@ -48,7 +48,7 @@ delete:
     mov x8, SYS_unlinkat
     mov x0, #AT_FDCWD
     ldr_l x1, filename_str
-    mov x2, #AT_SYMLINK_NOFOLLOW_ANY
+    mov x2, #AT_SYMLINK_NOFOLLOW
     svc #0
     b_err Lunlink_failed
 

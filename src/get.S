@@ -71,10 +71,11 @@ gbp:
     bl check_cgi_path
     cbz x0, Lcgi // branch to cgi handler if so
 
-    mov x8, SYS_open
-    ldr_l x0, filename_str
-    mov x1, #0 // RDONLY
-    orr x1, x1, #O_NOFOLLOW_ANY
+    mov x8, SYS_openat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_str
+    mov x2, #0 // RDONLY
+    orr x2, x2, #O_NOFOLLOW
     svc #0
     b_err Lhfs_err // if the carry flag is set, open() failed so handle it
 
@@ -113,7 +114,7 @@ head:
     mov x2, #-1
     mov x3, #200 // 200 OK
     bl build_header
-    b.cs L500
+    b_err L500
 
     ldr_l x0, clientfd
     adr_l x1, header_buf
@@ -150,7 +151,7 @@ get:
     mov x0, x20
     mov x1, x21
     bl parse_range
-    b.cs Lno_range
+    b_err Lno_range
 
     // here there be range
     // empty file has no satisfiable range
@@ -226,7 +227,7 @@ Lno_range:
     mov x2, #-1
     mov x3, #200 // 200 OK
     bl build_header
-    b.cs L500
+    b_err L500
 
     b Lmmap_start
 
@@ -240,7 +241,7 @@ Lbuild_ranged_header:
     mov x2, x23
     mov x3, #206 // 206 Partial Content
     bl build_header
-    b.cs L500
+    b_err L500
     // fallthrough
 
 Lmmap_start:
@@ -292,10 +293,8 @@ Lwrite_done:
     mov x0, x12
     mov x1, x19
     svc #0
-    // if munmap fails, b.cs would just branch to Lget_end anyway. so just
-    // fall through either way.
-
-// close the file
+    // if munmap fails, we would just branch to Lget_end anyway. so just fall
+    // through either way.
 Lget_end:
     // child_end will close the file descriptor
     b child_end

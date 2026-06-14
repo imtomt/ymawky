@@ -246,7 +246,6 @@ ghf_skip_ws:
 
     // return x1 -> length-x21 = remaining length
     sub x1, x20, x21
-    cmn xzr, xzr
     b ghf_epilogue
 
 ghf_scan_again:
@@ -254,11 +253,8 @@ ghf_scan_again:
     b ghf_scan
 
 ghf_not_found:
-    cmp xzr, xzr
     mov x0, #0
-    mov x1, #0
-    b ghf_epilogue
-
+    // fallthrough
 ghf_epilogue:
     ldr x24, [sp, #48]
     ldp x21, x23, [sp, #32]
@@ -292,7 +288,7 @@ parse_range:
     adr_l x2, range_match_str
     mov x3, range_match_len
     bl get_header_field
-    b.cs pr_no_range // wasn't found, oh well!
+    b_err pr_no_range // wasn't found, oh well!
 
     mov x22, x0 // pointer to beginning of data
     mov x23, x1 // remaining length in header field
@@ -411,13 +407,11 @@ pr_got_range:
     // if we're here, the ranges are good!
     mov x0, x25
     mov x1, x26
-    cmn xzr, xzr
+    //cmn xzr, xzr
     b pr_epilogue
 
 pr_no_range:
-    cmp xzr, xzr
-    mov x0, #0
-    mov x1, #0
+    mov x0, #-1
     b pr_epilogue
 
 pr_epilogue:
@@ -449,7 +443,7 @@ parse_content_length:
     adr_l x2, content_len_match_str
     mov x3, content_len_match_len
     bl get_header_field
-    b.cs pcl_err
+    b_err pcl_err
 
     mov x19, x0
     mov x20, x1
@@ -461,7 +455,7 @@ parse_content_length:
     adr_l x2, content_len_match_str
     mov x3, content_len_match_len
     bl get_header_field
-    b.cc pcl_malformed
+    cbnz x0, pcl_malformed
 
 Lskip_leading_zeroes:
     ldrb w2, [x19, x21]
@@ -783,11 +777,10 @@ Lasterisk:
 // no match was when we were parsing the header for request type. since we cant
 // find a file without a /, just return NULL
 Lno_match:
-    mov x0, #0
+    mov x0, #-1
     mov x1, #0
     mov x2, #0
     mov x3, #0
-    cmp xzr, xzr
     b Lparse_epilogue
 
 Lparse_end:
@@ -830,9 +823,8 @@ Lparse_end:
     mov x1, x22
 9:
 qsrchdone:
-    cmn xzr, xzr // clear carry in case. it gets set in the other error paths.
+    //cmn xzr, xzr // clear carry in case. it gets set in the other error paths.
 Lparse_epilogue:
-parsebp:
     // restore the link register and ret
     ldp x24, x25, [sp, #48]
     ldp x22, x23, [sp, #32]
@@ -904,7 +896,7 @@ do_path_checks:
     adr_l x0, buf
     ldr_l x1, header_len
     bl parse_path
-    b.cs L400
+    b_err L400
 
     str_l x2, query_str
     str_l x3, query_len

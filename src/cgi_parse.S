@@ -54,14 +54,14 @@ check_cgi_path:
     mov x1, #(cgi_dir_len - 1)
     cmp x0, x1
     b.lo Lnot_cgi_file
-
+bp1:
     // check if it matches CGI_DIR/, with the slash
     ldr_l x0, filename_str
     adr_l x1, cgi_dir
     mov x2, cgi_dir_len
     bl streqn_i
     cbnz x0, Lcgi_file
-
+bp2:
     // if we're here, x0 was zero, so it wasn't a match... yet.
     // check if it matches CGI_DIR, without the slash
     ldr_l x0, filename_str
@@ -69,7 +69,7 @@ check_cgi_path:
     mov x2, #(cgi_dir_len - 1) // account for possible missing /
     bl streqn_i
     cbz x0, Lnot_cgi_file // ok, it wasnt CGI_DIR/ or CGI_DIR, so its not a match
-
+bp3:
     // if they DO match, check the length. we want it to be the exact length of
     // CGI_DIR - 1, otherwise GET /cgi-binfoo would "match"
     ldr_l x0, filename_len
@@ -168,7 +168,7 @@ Lpche_no_end_found:
 // x3 -> length of x2
 //
 // return
-// x0 -> pointer to the beginning of the header value
+// x0 -> pointer to the beginning of the header value, or NULL on error
 // x1 -> length in said value
 get_cgi_header_field:
     stp x29, x30, [sp, #-64]!
@@ -244,12 +244,10 @@ gchf_scan:
     b gchf_check
 
 gchf_not_found:
-    mov x0, #-1
-    mov x1, #0
-    b 1f
-
-gchf_epilogue:
     mov x0, #0
+    mov x1, #0
+    // fallthrough
+gchf_epilogue:
 1:
     ldr x23, [sp, #48]
     ldp x21, x22, [sp, #32]

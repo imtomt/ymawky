@@ -80,8 +80,7 @@ chunk_buf: .skip chunk_buf_size
 // x2 -> source length
 //
 // returns
-// x0 -> destination offset to new current
-// carry set on overflow
+// x0 -> destination offset to new current, or -1 on error
 append_literal:
     stp x29, x30, [sp, #-32]!
     stp x19, x20, [sp, #16]
@@ -103,11 +102,11 @@ append_literal:
     // x2 is already set by caller
     bl memcpy
 
-    cmn xzr, xzr
+    //cmn xzr, xzr
     b 2f
 1:
-    mov x0, x19
-    cmp xzr, xzr
+    //mov x0, x19
+    mov x0, #-1
     // fallthrough
 
 2:
@@ -123,10 +122,8 @@ append_literal:
 // x4 -> allow /? 0 -> no, turn / into %2F// 1 -> yes, keep / as /
 //
 // returns
-// x0 -> destination with pointer offset
+// x0 -> destination with pointer offset, or -1 on error
 // x1 -> bytes written
-// carry set = overflow
-// carry clear = success
 href_encode:
     stp x29, x30, [sp, #-80]!
     stp x19, x20, [sp, #16]
@@ -216,15 +213,15 @@ href_percent:
     b href_encode_loop
 
 href_overflow:
-    mov x0, x19
+    //mov x0, x19
+    mov x0, #-1
     sub x1, x19, x23
-    cmp xzr, xzr // set carry
     b href_epilogue
 
 href_done:
     mov x0, x19
     sub x1, x19, x23
-    cmn xzr, xzr // clear carry
+    //cmn xzr, xzr // clear carry
     // fallthrough
 href_epilogue:
     ldr x25, [sp, #64]
@@ -317,15 +314,16 @@ Lcopy_encoding:
     b 1b
 
 Loverflow:
-    mov x0, x19 // pointer to destination, offset
+    //mov x0, x19 // pointer to destination, offset
+    mov x0, #-1
     sub x1, x19, x23 // bytes written
-    cmp xzr, xzr // set carry
+    //cmp xzr, xzr // set carry
     b 2f
 
 Ldone:
     mov x0, x19 // pointer to destination, offset
     sub x1, x19, x23 // bytes written
-    cmn xzr, xzr // clear carry
+    //cmn xzr, xzr // clear carry
     // fallthrough
 
 2:
@@ -407,7 +405,7 @@ write_chunk:
     adr_l x1, listing_chunk_p1
     mov x2, listing_chunk_p1_len
     bl append_literal
-    b.cs wc_overflow
+    b_err wc_overflow
     mov x22, x0 // save offset
 
     // copy filename, again
@@ -422,7 +420,7 @@ write_chunk:
     mov x3, x20
     mov x4, #0
     bl href_encode
-    b.cs wc_overflow
+    b_err wc_overflow
     mov x22, x0
 
     // copy the / if it's a dir
@@ -443,7 +441,7 @@ write_chunk:
     adr_l x1, listing_chunk_p2
     mov x2, listing_chunk_p2_len
     bl append_literal
-    b.cs wc_overflow
+    b_err wc_overflow
     mov x22, x0
 
     // copy filename, again
@@ -456,7 +454,7 @@ write_chunk:
     mov x1, x19
     mov x3, x20
     bl body_encode
-    b.cs wc_overflow
+    b_err wc_overflow
     mov x22, x0
 
     // append '/' to directories in the list
@@ -477,7 +475,7 @@ write_chunk:
     adr_l x1, listing_chunk_p3
     mov x2, listing_chunk_p3_len
     bl append_literal
-    b.cs wc_overflow
+    b_err wc_overflow
     mov x22, x0
 
 wc_done:
@@ -530,7 +528,7 @@ write_chunk_head:
     // x2 is set
     mov x3, x20
     bl body_encode
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     // copy the base part
@@ -538,7 +536,7 @@ write_chunk_head:
     adr_l x1, listing_base_p1
     mov x2, listing_base_p1_len
     bl append_literal
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     // filename again
@@ -553,7 +551,7 @@ write_chunk_head:
     mov x3, x20
     mov x4, #1 // treat / as literal in href_encode
     bl href_encode
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     // copy the end of the base thing
@@ -561,7 +559,7 @@ write_chunk_head:
     adr_l x1, listing_base_p2
     mov x2, listing_base_p2_len
     bl append_literal
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     // copy part 2
@@ -569,7 +567,7 @@ write_chunk_head:
     adr_l x1, listing_head_p2
     mov x2, listing_head_p2_len
     bl append_literal
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     // copy filename, again
@@ -583,14 +581,14 @@ write_chunk_head:
     // x2 is set
     mov x3, x20
     bl body_encode
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     mov x0, x22
     adr_l x1, listing_head_p3
     mov x2, listing_head_p3_len
     bl append_literal
-    b.cs wch_overflow
+    b_err wch_overflow
     mov x22, x0
 
     ldr_l x0, clientfd
@@ -599,7 +597,8 @@ write_chunk_head:
     bl write_with_chunk_length
 
 wch_overflow:
-    // maybe set some error flag so we can 500 here
+    mov x0, #-1
+    // fallthrough
 wch_epilogue:
     ldp x21, x22, [sp, #32]
     ldp x19, x20, [sp, #16]
@@ -657,13 +656,14 @@ gde_loop:
     // #8192 is too big for add (0-4096), so we gotta load it into a register
     // first, and do add xN, xN, x0.
     mov x0, #8192
-    mov x8, SYS_getdirentries64
+    //mov x8, SYS_getdirentries64
+    mov x8, SYS_getdents64
     mov x1, sp
     mov x2, x0 // 8kb buffer
     add x3, sp, x0 // basep
     mov x0, x20
     svc #0
-    b.cs gde_err
+    b_err gde_err
     // x0 = bytes written to buffer. if x0 == 0, we're done.
     cbz x0, gde_done
 
@@ -678,8 +678,11 @@ gde_entry:
     b.hs gde_loop
 
     // write the entry
+    add x1, x19, #OFF_D_NAME
+    bl strlen
+    mov x1, x0 // no name length member of the struct, so we gotta use strlen
     add x0, x19, #OFF_D_NAME
-    ldrh w1, [x19, #OFF_D_NAMLEN]
+    //ldrh w1, [x19, #OFF_D_NAMLEN]
     ldrb w2, [x19, #OFF_D_TYPE]
     bl write_chunk
 

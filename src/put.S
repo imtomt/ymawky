@@ -98,14 +98,15 @@ Ltarget_missing:
     str_l x0, filename_tmp_str
     str_l x1, filename_tmp_len
 
-    // open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)//
-    mov x8, SYS_open
-    ldr_l x0, filename_tmp_str
-    mov x1, #O_WRONLY
-    orr x1, x1, #O_CREAT
-    orr x1, x1, #O_TRUNC
-    orr x1, x1, #O_NOFOLLOW_ANY
-    mov x2, #0644 // rw-r--r--
+    // openat(AT_FDCWD, filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)//
+    mov x8, SYS_openat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_tmp_str
+    mov x2, #O_WRONLY
+    orr x2, x2, #O_CREAT
+    orr x2, x2, #O_TRUNC
+    orr x2, x2, #O_NOFOLLOW
+    mov x3, #0644 // rw-r--r--
     svc #0
     b_err Lhfs_err
     mov x25, x0 // save fd into x25
@@ -233,8 +234,9 @@ Lput_cleanup_tmp_file:
     mov x0, x25
     svc #0
 
-    mov x8, SYS_unlink
-    ldr_l x0, filename_tmp_str
+    mov x8, SYS_unlinkat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_tmp_str
     svc #0
 
     ret
@@ -248,8 +250,9 @@ Lput_sigalrm_handler:
     ldr_l x0, tmp_fd
     svc #0
 
-    mov x8, SYS_unlink
-    ldr_l x0, filename_tmp_str
+    mov x8, SYS_unlinkat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_tmp_str
     svc #0
 
     b L408
@@ -268,8 +271,9 @@ Lput_read_zero:
     mov x0, x25
     svc #0
 
-    mov x8, SYS_unlink
-    ldr_l x0, filename_tmp_str
+    mov x8, SYS_unlinkat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_tmp_str
     svc #0
 
     b L400
@@ -287,12 +291,13 @@ Lput_done:
     mov x0, x25
     svc #0
 
-    mov x8, SYS_renameatx_np
+    mov x8, SYS_renameat2
     mov x0, #AT_FDCWD
     ldr_l x1, filename_tmp_str
     mov x2, #AT_FDCWD
     ldr_l x3, filename_str
-    mov x4, #RENAME_NOFOLLOW_ANY
+    mov x4, #0
+    //mov x4, #RENAME_NOFOLLOW_ANY
     svc #0
     b_err 2f
 
@@ -301,8 +306,9 @@ Lput_done:
 
 2:
     mov x20, x0
-    mov x8, SYS_unlink
-    ldr_l x0, filename_tmp_str
+    mov x8, SYS_unlinkat
+    mov x0, AT_FDCWD
+    ldr_l x1, filename_tmp_str
     svc #0
     mov x0, x20
     b handle_fs_error

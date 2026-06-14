@@ -361,14 +361,13 @@ Lheader_tail:
 
     b Lbh_done
 Lheader_too_big:
-    mov x0, #0
+    mov x0, #-1
     str_l x0, header_len
-    cmp xzr, xzr // set carry
     b Lbh_epilogue
 
 Lbh_done:
     str_l x14, header_len
-    cmn xzr, xzr // clear carry
+    //cmn xzr, xzr // clear carry
     b Lbh_epilogue
 
 Lbh_epilogue:
@@ -473,10 +472,11 @@ reply_status:
 
     // ok now err_page_buf should be something like "err/404.html". now we
     // gotta basically GET that shit.
-    mov x8, SYS_open
-    adr_l x0, err_page_buf
-    mov x1, #0 // RDONLY
-    orr x1, x1, #O_NOFOLLOW_ANY // can't be too careful now can we?
+    mov x8, SYS_openat
+    mov x0, AT_FDCWD
+    adr_l x1, err_page_buf
+    mov x2, #0 // RDONLY
+    orr x2, x2, #O_NOFOLLOW // can't be too careful now can we?
     svc #0
     b_err sc_err
     mov x23, x0 // save the fd

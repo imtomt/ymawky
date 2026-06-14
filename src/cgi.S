@@ -8,6 +8,15 @@
 .global script_ct
 .global script_ct_len_val
 
+.macro ld_r_pipe reg, sym
+    ldr \reg, \sym
+.endm
+
+.macro ld_w_pipe reg, sym
+    adr_l x0, \sym
+    ldr \reg, [x0, #4]
+.endm
+
 .data
 .balign 8
 cgi_read_timer:
@@ -109,20 +118,20 @@ cgi:
     mov x1, O_CLOEXEC
     svc #0
     b_err L500
-    str_l w0, cgi_stdin_r
-    str_l w1, cgi_stdin_w
+    //str_l w0, cgi_stdin_r
+    //str_l w1, cgi_stdin_w
 
     mov x8, #SYS_pipe2
-    mov x0, stdout_pipe
+    adr_l x0, stdout_pipe
     mov x1, O_CLOEXEC
     svc #0
     b_err L500
-    str_l w0, cgi_stdout_r
-    str_l w1, cgi_stdout_w
+    //str_l w0, cgi_stdout_r
+    //str_l w1, cgi_stdout_w
 
 about_to_fork:
     // SYS_clone()
-    mov x8, SYS_fork
+    mov x8, SYS_clone
     mov x0, SIGCHLD
     mov x1, #0
     mov x2, #0
@@ -133,7 +142,7 @@ about_to_fork:
     b.hi L500 // just bail if fork fails
 
     // are we the child?
-    cbz x0, child
+    cbz x0, cgi_child
 
     // if not, then we're the...
 cgi_parent:
@@ -171,8 +180,15 @@ cgi_parent:
     adr_l x0, buf
     ldr_l x1, header_len
     bl parse_content_length
-    b.cc 2f // if there is content-length, just continue and skip the next check
-    // XXX XXX THIS WILL NEED TO CHANGE
+    cmp x0, #0
+    b.ge 2f // if there is content-length, just continue and skip the next check
+
+    // TODO should check the return value of parse_content_length.
+    // -1 means malformed header
+    // -2 means Content-Length: X value is too large
+    // -3 means other error, mostly no content-length found.
+    // we only want to continue on -3. -2 should give either a 413 or 400, -1
+    // should give a 400.
 
     // if we're here, there's no content length. that's fine for POST. ymawky
     // requires content length for PUT, however, so let's check that.
@@ -238,7 +254,8 @@ cgi_parent:
     cbz x24, Lforward_loop
 
     // write whatever body is already present in buf, to cgi_stdin_w
-    ldr_l w0, cgi_stdin_w
+    ld_w_pipe w0, stdin_pipe
+    //ldr_l w0, cgi_stdin_w
     adr_l x1, buf
     add x1, x1, x20
     mov x2, x24
@@ -264,7 +281,8 @@ Lforward_loop:
     mov x26, x0 // x26 = bytes just read
 
     // now forward those bytes to cgi_stdin_w
-    ldr_l w0, cgi_stdin_w
+    ld_w_pipe w0, stdin_pipe
+    //ldr_l w0, cgi_stdin_w
     adr_l x1, cgi_buf
     mov x2, x26
     bl write_all
@@ -290,7 +308,8 @@ Lcgi_read_zero:
 Lforward_done:
     // close cgi_stdin_w to signal EOF
     mov x8, SYS_close
-    ldr_l w0, cgi_stdin_w
+    ld_w_pipe w0, stdin_pipe
+    //ldr_l w0, cgi_stdin_w
     svc #0
     b_err Lhfs_error
 
@@ -309,7 +328,8 @@ Lread_loop:
 
 Lheader_read_loop:
     mov x8, SYS_read
-    ldr_l w0, cgi_stdout_r
+    ld_r_pipe w0, stdout_pipe
+    //ldr_l w0, cgi_stdout_r
     adr_l x1, cgi_buf
     add x1, x1, x20 // append to cgi_buf, rather than overwriting
     mov x2, BUF_SIZE
@@ -388,7 +408,7 @@ Lstatus_done:
     adr_l x2, script_ct
     mov x3, script_ct_len
     bl get_cgi_header_field
-    b.cc Lgot_ct
+    cbnz x0, Lgot_ct
     // XXX XXX THIS WILL NEED TO CHANGE
     // not found... if there's a body, that's bad. Content-Type is required
     // if there's a body! so we gotta check.
@@ -432,7 +452,8 @@ Lgot_ct:
 Lbody_read_loop:
     // stream any remaining body content from cgi script's stdout, to clientfd
     mov x8, SYS_read
-    ldr_l w0, cgi_stdout_r
+    //ldr_l w0, cgi_stdout_r
+    ld_r_pipe w0, stdout_pipe
     adr_l x1, cgi_buf
     mov x2, BUF_SIZE
     svc #0
@@ -470,16 +491,18 @@ cgi_child:
     //[cgi_stdin_pipe] (offset 0) = read end, [cgi_stdin_pipe, #4] (offset 4) = write end.
     // we've gotta close() unused fds
     // close stdin_w
-    mov x8, SYS_close
-    ldr_l w0, cgi_stdin_w
-    svc #0
-    b_err Lchild_error
+//    mov x8, SYS_close
+    //ldr_l w0, cgi_stdin_w
+//    ld_w_pipe w0, stdin_pipe
+//    svc #0
+//    b_err Lchild_error
 
     // close stdout_r
-    mov x8, SYS_close
-    ldr_l w0, cgi_stdout_r
-    svc #0
-    b_err Lchild_error
+//    mov x8, SYS_close
+    //ldr_l w0, cgi_stdout_r
+//    ld_r_pipe w0, stdout_pipe
+//    svc #0
+//    b_err Lchild_error
 
     // duplicate the file descriptors to be actually stdin/out
     mov x8, SYS_dup3
@@ -659,7 +682,7 @@ kill_kid:
 
     mov x8, SYS_close
     adr_l x1, stdin_pipe
-    mov w0, [x1, #4]
+    ldr w0, [x1, #4]
     svc #0
 
     mov x8, SYS_kill

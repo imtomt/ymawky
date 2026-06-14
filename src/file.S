@@ -118,7 +118,7 @@ unknown_ct: .ascii "text/plain; charset=utf-8"
 // x3 -> executable? 1 = yes, 0 = no
 stat_fd:
     sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
-    mov x8, SYS_fstat64
+    mov x8, SYS_fstat
 
     mov x1, sp // stat buffer, on the stack
     svc #0
@@ -127,7 +127,8 @@ stat_fd:
     // read st_mode (halfword at offset 4 in stat buffer)
     // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
     // NOTE at offset 4. if that ever changes, look here!
-    ldrh w1, [sp, #4]
+    //ldrh w1, [sp, #4]
+    ldr w1, [sp, #OFF_ST_MODE]
 
     // here we check if the file is executable, so we can treat it as a CGI
     // script possibly!
@@ -167,9 +168,12 @@ Lstat_fd_end:
 // x3 -> executable? 1 = yes, 0 = no
 stat_path:
     sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
-    mov x8, SYS_stat64
+    mov x8, SYS_newfstatat
+    mov x1, x0 // file path
+    mov x0, AT_FDCWD
     // x0 is already set
-    mov x1, sp // stat buffer, on the stack
+    mov x2, sp // stat buffer, on the stack
+    mov x3, AT_SYMLINK_NOFOLLOW
     svc #0
     b_err Lstat_path_failed
 

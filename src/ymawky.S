@@ -16,7 +16,7 @@
 
 #include "defs.S"
 
-.global _main
+.global _start
 .global child_end
 .global addr // we use the addr struct in cgi_env.S to get server ip/port
              // we *could* hardcode 127.0.0.1, but where's the fun in that?
@@ -116,19 +116,23 @@ sockfd:             .skip 8
 .text
 .align 2
 
-_main:
-    mov x28, #0
+_start:
+    //mov x28, #0
     // did we get an argument
+    ldr x0, [sp]
     cmp x0, #1
     b.le skip_argv
 
-    ldr x9, [x1, #8] // argv[1] pointer
-    ldrb w0, [x9] // first byte of string
+//    ldr x9, [x1, #8] // argv[1] pointer
+//    ldrb w0, [x9] // first byte of string
+    //ldr x1, [x0, #4]
+    //add x0, x0, #4
+    ldr x0, [sp, #8]
     // if it's less than 'A' (0x41), it's probably a number. so if it is, just
     // treat it as a port. otherwise, if it's > A (so any letter), let's treat
     // it as a debug option. pretty hack-y, but supes helpful for debugging, so
     // we can automatically not fork().
-    cmp w0, #'A'
+    cmp x0, #'A'
     b.lt 2f
 
     mov x28, #1
@@ -136,7 +140,9 @@ _main:
 
 2:
     // get argv0.
-    ldr x0, [x1, #8]
+    //ldr x0, [x1, #8]
+    //mov x0, x1
+    // x0 is already argv[1]
     bl atoi
     b_err fatal_exit
 
@@ -170,8 +176,8 @@ skip_argv:
     // setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &value, 4)
     mov x8, SYS_setsockopt
     ldr_l x0, sockfd
-    mov x1, #0xFFFF // SOL_SOCKET = 0xFFFF
-    mov x2, #4 // SO_REUSEADDR = 4
+    mov x1, #SOL_SOCKET
+    mov x2, #SO_REUSEADDR
     adr_l x3, one
     mov x4, #4 // sizeof int
     svc #0
@@ -236,39 +242,39 @@ loop:
     // fork -- it's much easier to debug with lldb if there's no forking :(
     cbnz x28, child
 
-    mov x8, SYS_getpid
-    svc #0
+//    mov x8, SYS_getpid
+//    svc #0
     // x0 now contains pid
 
-    // gotta check if number of processes is > MAX_PROCS. luckily, apple has an
-    // undocumented syscall, "proc_info", that allows us to get all children of
-    // this process into a buffer. in the buffer, each child pid is stored as a
-    // 32-bit integers.
-    sub sp, sp, #2048 // allocate a bit of stack space for the proc_info buf
-    mov x8, SYS_proc_info
-    mov x2, x0 // our pid. wondering why we called gitpid() a minute ago? //)
-    mov x0, PROC_INFO_CALL_LISTPIDS
-    mov x1, PROC_PPID_ONLY
-    mov x3, #0
-    mov x4, sp
-    mov x5, #2048
-    svc #0
+//    // gotta check if number of processes is > MAX_PROCS. luckily, apple has an
+//    // undocumented syscall, "proc_info", that allows us to get all children of
+//    // this process into a buffer. in the buffer, each child pid is stored as a
+//    // 32-bit integers.
+//    sub sp, sp, #2048 // allocate a bit of stack space for the proc_info buf
+//    mov x8, SYS_proc_info
+//    mov x2, x0 // our pid. wondering why we called gitpid() a minute ago? //)
+//    mov x0, PROC_INFO_CALL_LISTPIDS
+//    mov x1, PROC_PPID_ONLY
+//    mov x3, #0
+//    mov x4, sp
+//    mov x5, #2048
+//    svc #0
 
     // proc_info returns the number of bytes written to the stack. if we divide
     // by 4, it tells us the total number of procs.
-    lsr x0, x0, #2
-    add sp, sp, #2048 // now we can free up the stack space
+//    lsr x0, x0, #2
+//    add sp, sp, #2048 // now we can free up the stack space
 
     // is the nuymber of procs > MAX_PROCS? 503 if so.
-    cmp x0, #MAX_PROCS
-    b.ls 8f
+//    cmp x0, #MAX_PROCS
+//    b.ls 8f
 
     // uh-oh, we're at the max processes. let's give a nice, kind, smart, cute,
     // lil, friendly 503 :3
-    mov x0, #503
-    mov x1, #1 // we DO want to return here!
-    bl reply_status
-    b 2f // close n loop!
+//    mov x0, #503
+//    mov x1, #1 // we DO want to return here!
+//    bl reply_status
+//    b 2f // close n loop!
 
 8:
     // clone()
@@ -302,22 +308,22 @@ child:
     // connections from staying open indefinitely
     mov x8, SYS_setsockopt
     ldr_l x0, clientfd
-    mov x1, #0xFFFF // SOL_SOCKET
-    mov x2, #0x1006 // SO_RCVTIMEO = 0x1006
+    mov x1, #SOL_SOCKET
+    mov x2, #SO_RCVTIMEO
     adr_l x3, rcv_timeout
     mov x4, #16 // struct timeval is 16 bytes
     svc #0
     b_err child_end
 
     // setsockopt(), SO_NOSIGPIPE
-    mov x8, SYS_setsockopt
-    ldr_l x0, clientfd
-    mov x1, 0xFFFF // SOL_SOCKET
-    mov x2, 0x1022 // SO_NOSIGPIPE
-    adr_l x3, one
-    mov x4, #4
-    svc #0
-    b_err child_end
+    //mov x8, SYS_setsockopt
+    //ldr_l x0, clientfd
+    //mov x1, 0xFFFF // SOL_SOCKET
+    //mov x2, 0x1022 // SO_NOSIGPIPE
+    //adr_l x3, one
+    //mov x4, #4
+    //svc #0
+    //b_err child_end
 
     // arm timer before reading
     mov x8, SYS_setitimer
@@ -665,7 +671,7 @@ Lhttp11:
     adr_l x2, host_str
     mov x3, host_str_len
     bl get_header_field
-    b.cs L400
+    b_err L400
 
     b vh_epilogue
 

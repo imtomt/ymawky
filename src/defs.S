@@ -74,15 +74,21 @@
 
 .equ BUF_SIZE,       16384
 
+// constants for setsockopt
+.equ SOL_SOCKET,     1
+.equ SO_REUSEADDR,   2
+.equ SO_RCVTIMEO,    20 // this is technically SO_RCVTIMEO_OLD, but that's what
+                        // we want
+
 // stat struct layout
 // note to future self st_mode is at offset 16, it's 4 bytes, load with `ldr w`
-.equ OFF_ST_MODE,    16          // load with `ldr w`, NOT ldrh — it's a 4-byte uint on Linux
-.equ S_IFREG,        0x8000      // 0o100000
-.equ S_IFDIR,        0x4000      // 0o40000
-.equ S_IXUSR,        0x40        // same
-.equ S_IXGRP,        0x08        // same
-.equ S_IXOTH,        0x01        // same
-.equ S_IXANY,        0x49        // same
+.equ OFF_ST_MODE,    16
+.equ S_IFREG,        0x8000
+.equ S_IFDIR,        0x4000
+.equ S_IXUSR,        0x40
+.equ S_IXGRP,        0x08
+.equ S_IXOTH,        0x01
+.equ S_IXANY,        0x49
 
 .equ EPERM,          1
 .equ ENOENT,         2
@@ -111,6 +117,7 @@
 .equ EHOSTUNREACH,   113
 .equ EDQUOT,         122
 
+.equ SIGPIPE,        13
 .equ SIGALRM,        14
 .equ SIGCHLD,        17
 .equ SIG_IGN,        1

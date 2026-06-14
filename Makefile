@@ -1,6 +1,6 @@
 SRCS := $(wildcard src/*.S)
 OBJS := $(SRCS:src/%.S=%.o)
-LDFLAGS := -z noexecstack -e _main -g
+LDFLAGS := -z noexecstack -e _start -g
 
 ymawky: $(OBJS)
 	ld $(OBJS) -o ymawky $(LDFLAGS)
