@@ -478,8 +478,7 @@ reply_status:
     mov x1, #0 // RDONLY
     orr x1, x1, #O_NOFOLLOW_ANY // can't be too careful now can we?
     svc #0
-
-    b.cs sc_err
+    b_err sc_err
     mov x23, x0 // save the fd
 
     // x0 is still set tho
@@ -508,8 +507,7 @@ reply_status:
     mov x4, x23 // from open()
     mov x5, #0 // offset
     svc #0
-
-    b.cs sc_err
+    b_err sc_err
 
     // x0 is now the pointer to memory for the file. save it for now.
     mov x25, x0

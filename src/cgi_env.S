@@ -15,7 +15,7 @@
     adr_l x1, \sym
     mov x2, \len
     bl sev_add_const_var
-    b.cs sev_failure
+    b_err sev_failure
 .endm
 
 
@@ -134,7 +134,7 @@ set_env_vars:
     adr_l x1, peer_addr
     adr_l x2, peer_addr_len
     svc #0
-    b.cs L500
+    b_err L500
 
     adr_l x19, env_var_str_buf
     adr_l x20, env_var_ptr_buf
@@ -176,7 +176,7 @@ set_env_vars:
     adr_l x3, remote_addr_ip_buf
     mov x4, x26 // ip length
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // REMOTE_HOST=remote_addr_ip_buf
     adr_l x1, remote_host
@@ -184,7 +184,7 @@ set_env_vars:
     adr_l x3, remote_addr_ip_buf
     mov x4, x26 // same ip, same ip length we saved above
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // get our server's IP and port for the CGI script
     mov x25, x0 // save current pointer
@@ -201,7 +201,7 @@ set_env_vars:
     mov x2, server_name_len
     adr_l x3, server_addr_ip_buf
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // SERVER_PORT=server_addr_port_buf
     adr_l x1, server_port
@@ -209,7 +209,7 @@ set_env_vars:
     adr_l x3, server_addr_port_buf
     mov x4, x26 // port length we saved above
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // HTTP_HOST=hostname
     // gotta save x0... it's the pointer for sev_add_*_var
@@ -221,7 +221,7 @@ set_env_vars:
     adr_l x2, host_header_str
     mov x3, host_header_str_len
     bl get_cgi_header_field
-    b.cs 2f // if the Host: field doesn't exist, just skip this bit
+    b_err 2f // if the Host: field doesn't exist, just skip this bit
 
     // now actually set the HTTP_HOST= envvar
     mov x3, x0 // x0 -> pointer to the beginning of the value
@@ -230,7 +230,7 @@ set_env_vars:
     adr_l x1, http_host
     mov x0, x25 // restore it
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
     b 3f // skip the restore, since we already restored. that's only for no
          // header being found.
 2:
@@ -253,7 +253,7 @@ set_env_vars:
     ldr_l x4, filename_len
     sub x4, x4, x5
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // QUERY_STRING=query_str
     adr_l x1, query_string
@@ -261,7 +261,7 @@ set_env_vars:
     ldr_l x3, query_str // from data.S. TODO get better names
     ldr_l x4, query_len
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // content length and content type are only for PUT/POST
     ldr_l x3, request_id
@@ -277,7 +277,7 @@ set_env_vars:
     adr_l x0, buf // this is the header from the clients req. i've gotta rename
     ldr_l x1, header_len
     bl parse_content_length
-    b.cs 2f // restore pointer and go to the next one. if there's not content
+    b_err 2f // restore pointer and go to the next one. if there's not content
             // length, there'll be no content type either. just dont set these
 
     // x0 should be content length from parse_content_length now.
@@ -292,7 +292,7 @@ set_env_vars:
     adr_l x1, content_length
     mov x2, content_length_len
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     // now we gotta do content-type
     mov x25, x0 // save that shit
@@ -302,7 +302,7 @@ set_env_vars:
     adr_l x2, script_ct
     ldr_l x3, script_ct_len_val
     bl get_cgi_header_field
-    b.cs 2f // if the Host: field doesn't exist
+    b_err 2f // if the Host: field doesn't exist
 
     // now actually set the CONTENT_TYPE= envvar
     mov x3, x0 // x0 -> pointer to the beginning of the value
@@ -311,7 +311,7 @@ set_env_vars:
     adr_l x1, content_type
     mov x0, x25 // restore it
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
     b 3f // skip the restore
 2:
     mov x0, x25 // gotta restore if the host header field didn't exist, too...
@@ -327,7 +327,7 @@ set_env_vars:
     adr_l x1, request_method
     mov x2, request_method_len
     bl sev_add_kv_var
-    b.cs sev_failure
+    b_err sev_failure
 
     str xzr, [x20, x22]
     b sev_epilogue
@@ -377,10 +377,10 @@ sev_add_kv_var:
     strb wzr, [x0], #1
 
 1:
-    cmn xzr, xzr // clear carry
+    mov x0, #0
     b 3f
 2:
-    cmp xzr, xzr // set carry
+    mov x0, #-1
 3:
     ldp x25, x26, [sp, #16]
     ldp x29, x30, [sp], #32
@@ -404,10 +404,10 @@ sev_add_const_var:
     // store string in env_var_str_buf
     bl memcpy
 1:
-    cmn xzr, xzr // clear carry
+    mov x0, #0
     b 3f
 2:
-    cmp xzr, xzr // set carry
+    mov x0, #-1
 3:
     ldp x29, x30, [sp], #16
     ret
@@ -415,10 +415,10 @@ sev_add_const_var:
 // yup... that was all part of set_env_vars. that's why sev_add_kv_var used
 // the callee-saved registers without me worrying about it :)
 sev_failure:
-    cmp xzr, xzr
+    mov x0, #-1
     b 1f
 sev_epilogue:
-    cmn xzr, xzr
+    mov x0, #0
 1:
     ldp x25, x26, [sp, #64]
     ldp x23, x24, [sp, #48]

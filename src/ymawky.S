@@ -138,7 +138,7 @@ _main:
     // get argv0.
     ldr x0, [x1, #8]
     bl atoi
-    b.cs fatal_exit
+    b_err fatal_exit
 
     // now x0 contains the integer representation of argv[1]
     mov x2, #65535
@@ -163,7 +163,7 @@ skip_argv:
     mov x1, #1 // SOCK_STREAM
     mov x2, #0 // nothin, TCP
     svc #0
-    b.cs fatal_exit
+    b_err fatal_exit
 
     str_l x0, sockfd
 
@@ -175,7 +175,7 @@ skip_argv:
     adr_l x3, one
     mov x4, #4 // sizeof int
     svc #0
-    b.cs exit
+    b_err exit
 
     // bind(sockfd, &addr, 16)
     mov x8, SYS_bind
@@ -183,14 +183,14 @@ skip_argv:
     adr_l x1, addr
     mov x2, #16 // the struct is 16 bytes
     svc #0
-    b.cs exit
+    b_err exit
 
     // listen(sockfd, 5)
     mov x8, SYS_listen
     ldr_l x0, sockfd
     mov x1, #5
     svc #0
-    b.cs exit
+    b_err exit
 
     mov x8, SYS_write
     mov x0, #1
@@ -227,7 +227,7 @@ loop:
     mov x1, #0
     mov x2, #0
     svc #0
-    b.cs loop // loop if accept() failed.
+    b_err loop // loop if accept() failed.
 
     // store x0 (return of accept) in clientfd
     str_l x0, clientfd
@@ -271,20 +271,18 @@ loop:
     b 2f // close n loop!
 
 8:
-    // fork()
-    mov x8, SYS_fork
+    // clone()
+    mov x8, SYS_clone
+    mov x0, SIGCHLD
+    mov x1, #0
+    mov x2, #0
+    mov x3, #0
+    mov x4, #0
     svc #0
-    b.cs 2f // fork failed :( fuck :( close and loop again :(
+    b_err 2f // clone failed :( fuck :( close and loop again :(
 
     // if we're in the child, go there
-    // NOTE
-    // on macos, fork() returns the pid of the child process in x0 in the
-    // parent process. in the child process, it puts 1 in x1. on linux, fork
-    // will put 0 in x0 in the child, or the pid in x0 in the parent. so it's
-    // a bit different. if you're on linux, you've got to change this to
-    // cmp x0, #0
-    cmp x1, #1
-    b.eq child
+    cbz x0, child
 2:
     // otherwise close clientfd and loop
     mov x8, SYS_close
@@ -309,7 +307,7 @@ child:
     adr_l x3, rcv_timeout
     mov x4, #16 // struct timeval is 16 bytes
     svc #0
-    b.cs child_end
+    b_err child_end
 
     // setsockopt(), SO_NOSIGPIPE
     mov x8, SYS_setsockopt
@@ -319,7 +317,7 @@ child:
     adr_l x3, one
     mov x4, #4
     svc #0
-    b.cs child_end
+    b_err child_end
 
     // arm timer before reading
     mov x8, SYS_setitimer
@@ -348,7 +346,7 @@ child:
     mov x3, #8
     svc #0
     add sp, sp, #32
-    b.cs L500
+    b_err L500
 
     // read(client_fd, buffer, buffer_size)
     mov x7, #0
@@ -360,7 +358,7 @@ read_loop:
     mov x22, #BUF_SIZE
     sub x2, x22, x7 // BUF_SIZE - bytes_read
     svc #0
-    b.cs read_failed
+    b_err read_failed
     mov x22, x0 // stash number of bytes read() got in x22
 
     add x7, x7, x0 // save x0 because parse_header_end clobbers it. cumulatively

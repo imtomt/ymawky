@@ -122,7 +122,7 @@ stat_fd:
 
     mov x1, sp // stat buffer, on the stack
     svc #0
-    b.cs Lstat_fd_failed
+    b_err Lstat_fd_failed
 
     // read st_mode (halfword at offset 4 in stat buffer)
     // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,
@@ -171,7 +171,7 @@ stat_path:
     // x0 is already set
     mov x1, sp // stat buffer, on the stack
     svc #0
-    b.cs Lstat_path_failed
+    b_err Lstat_path_failed
 
     // read st_mode (halfword at offset 4 in stat buffer)
     // NOTE st_mode in struct stat64 is a mode_t (u16) inside the stat struct,

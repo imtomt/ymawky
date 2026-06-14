@@ -136,13 +136,10 @@ make_tmp_file:
     adr_l x0, filename_buf_tmp
     sub x1, x23, #1
 
-    cmn xzr, xzr // clear carry bit just in case! probably unneeded.
     b mtf_epilogue
 
 mtf_err:
-    cmp xzr, xzr // sets carry bit
-    // return NULLs
-    mov x0, #0
+    mov x0, #-1
     mov x1, #0
     // fallthrough
 
@@ -351,7 +348,7 @@ Lpr_start_next:
     mov x0, x2
     mov x1, x24
     bl atoi_n
-    b.cs pr_no_range
+    b_err pr_no_range
     mov x25, x0
     b pr_got_start
 1:
@@ -387,7 +384,7 @@ Lpr_end_next:
     mov x0, x2
     mov x1, x24
     bl atoi_n
-    b.cs pr_no_range
+    b_err pr_no_range
     mov x26, x0
     b pr_got_range
 1:
@@ -529,7 +526,7 @@ Lgot_cl_len:
     add x0, x0, x21
     // x1 is still set
     bl atoi_n
-    b.cs pcl_malformed
+    b_err pcl_malformed
 
     // let's also cap it at 1GB (by default). change MAX_BODY_SIZE at the top
     // of the file to customize.
@@ -545,22 +542,18 @@ pcl_done:
     b.eq pcl_err
 
     mov x0, x22
-    cmn xzr, xzr // clears carry bit
     b pcl_epilogue
 
 pcl_body_too_large:
-    cmp xzr, xzr // sets carry bit
-    mov x0, #2 // 2 means Content-Length: X value is too large
+    mov x0, #-2 // -2 means Content-Length: X value is too large
     b pcl_epilogue
 
 pcl_malformed:
-    cmp xzr, xzr // sets carry bit
-    mov x0, #1 // 1 means malformed header
+    mov x0, #-1 // 1 means malformed header
     b pcl_epilogue
 
 pcl_err:
-    cmp xzr, xzr // sets carry bit
-    mov x0, #0 // 0 means other error, like no content-length found
+    mov x0, #-3 // 0 means other error, like no content-length found
     // fall through
 
 pcl_epilogue:

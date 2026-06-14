@@ -78,11 +78,11 @@ check_cgi_path:
     b.ne Lnot_cgi_file
     // fallthrough
 Lcgi_file:
-    cmn xzr, xzr // clear carry
+    mov x0, #0 // OK
     b Lccp_epilogue
 
 Lnot_cgi_file:
-    cmp xzr, xzr // set carry
+    mov x0, #-1 // error :(
     // fallthrough
 Lccp_epilogue:
     ldp x29, x30, [sp], #16
@@ -244,13 +244,12 @@ gchf_scan:
     b gchf_check
 
 gchf_not_found:
-    cmp xzr, xzr // set carry
-    mov x0, #0
+    mov x0, #-1
     mov x1, #0
     b 1f
 
 gchf_epilogue:
-    cmn xzr, xzr
+    mov x0, #0
 1:
     ldr x23, [sp, #48]
     ldp x21, x22, [sp, #32]
@@ -340,11 +339,11 @@ get_script_path_elements:
     b Lgspe_epilogue
 
 Lgspe_error:
-    cmp xzr, xzr // set carry bit
+    mov x0, #-1
     b 1f
 
 Lgspe_epilogue:
-    cmn xzr, xzr // clear carry bit
+    mov x0, #0
 1:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #32

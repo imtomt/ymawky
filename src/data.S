@@ -17,7 +17,7 @@ file_des:     .quad -1 // file descriptor for GET/HEAD and stuff. should be
 .bss
 // + 1 so we can NULL terminate, even if content is BUF_SIZE bytes long
 buf:          .skip BUF_SIZE + 1
-.align 3 // + 1 breaks alignment
+.balign 8 // + 1 breaks alignment
 header_len:   .skip 8
 clientfd:     .skip 8
 filename_str: .skip 8

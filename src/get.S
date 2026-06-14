@@ -69,14 +69,14 @@ get_setup:
 gbp:
     // check if the path requested is in CGI_DIR
     bl check_cgi_path
-    b.cc Lcgi // branch to cgi handler if so
+    cbz x0, Lcgi // branch to cgi handler if so
 
     mov x8, SYS_open
     ldr_l x0, filename_str
     mov x1, #0 // RDONLY
     orr x1, x1, #O_NOFOLLOW_ANY
     svc #0
-    b.cs Lhfs_err // if the carry flag is set, open() failed so handle it
+    b_err Lhfs_err // if the carry flag is set, open() failed so handle it
 
     // save the file descriptor
     str_l x0, file_des
@@ -256,7 +256,7 @@ Lmmap_start:
     ldr_l x4, file_des // file descriptor
     mov x5, #0 // offset
     svc #0
-    b.cs L500
+    b_err L500
     // x0 is now the pointer to memory for the file
 
     // stash the pointer somewhere safe
@@ -267,7 +267,7 @@ Lmmap_start:
     adr_l x1, header_buf
     ldr_l x2, header_len
     bl write_all
-    b.cs 2f // if header write failed, don't bother writing the body
+    b_err 2f // if header write failed, don't bother writing the body
 
     // if filesize is 0, the mmap'd registers are unitialized, and the file is
     // empty! so just skip this write

@@ -38,14 +38,13 @@ itoa_buf: .skip 20
 // x2 -> nbytes
 //
 // output
-// x0 -> number of bytes written, total.
+// x0 -> number of bytes written, total, or -ERRNO on fail
 write_all:
     stp x25, x26, [sp, #-16]!
     mov x25, x0 // save x0 into x20
     mov x26, #0
+    mov x0, #0
 1:
-    // carry = 0, in case we exit with cbz without ever calling write().
-    cmn xzr, xzr
     cbz x2, 2f
 
     mov x8, SYS_write
@@ -53,7 +52,7 @@ write_all:
     // x1 is set by caller
     // x2 is also set by caller
     svc #0
-    b.cs Lwrite_fail
+    b_err Lwrite_fail
 
     sub x2, x2, x0 // subtract written bytes
     add x26, x26, x0 // increment total bytes written
@@ -68,10 +67,9 @@ write_all:
     ret
 
 Lwrite_fail:
-    cmp x0, #EINTR
+    cmn x0, #EINTR
     b.eq 1b
 
-    cmp xzr, xzr // set C=1 so we can b.cs
     // x0 is already errno
     b 3b
 
@@ -138,13 +136,11 @@ atoi:
 
     b 1b
 2:
-    cmn xzr, xzr
     mov x0, x1
     ret
 
 Latoi_error:
-    cmp xzr, xzr
-    mov x0, #0
+    mov x0, #-1
     ret
 
 
@@ -183,13 +179,11 @@ atoi_n:
     sub x1, x1, #1
     b 2b
 3:
-    cmn xzr, xzr
     mov x0, x2
     ret
 
 Latoi_n_error:
-    cmp xzr, xzr
-    mov x0, #0
+    mov x0, #-1
     ret
 
 

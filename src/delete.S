@@ -38,7 +38,7 @@ delete:
     // at this point you know the drill. if it's a request within CGI_DIR,
     // treat it as a CGI script.
     bl check_cgi_path
-    b.cc Lcgi
+    cbz x0, Lcgi
 
     ldr_l x0, filename_str
     bl stat_path
@@ -50,7 +50,7 @@ delete:
     ldr_l x1, filename_str
     mov x2, #AT_SYMLINK_NOFOLLOW_ANY
     svc #0
-    b.cs Lunlink_failed
+    b_err Lunlink_failed
 
     b L204
 
@@ -58,6 +58,8 @@ delete:
 // different label names for clarity when reading hehe
 Ldelete_stat_failed:
 Lunlink_failed:
+    neg x0, x0 // errno gets returned as a negative, so make it positive
+
     // if the file doesn't exist (or was previously deleted), just reply 204
     // since DELETE is idempotent.
     cb eq, x0, #ENOENT, L204

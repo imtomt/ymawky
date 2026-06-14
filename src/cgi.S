@@ -3,18 +3,6 @@
 // this file is ugly and long as fuck. TODO: clean it up, split into multiple
 // different files.
 
-/*
- * TODO
- * use pipe2, put some stuff in .bss, 2 variables stdout_pipe and stdin_pipe
- * instead of the 4 currently, since pipe2() takes an array of 2 ints.
- * use dup3 instead of dup2.
- * use CLOEXEC (0x80000) for pipe2()
- * parent still closes stdin read (first 4 bytes of stdin_pipe) and stdout write
- * (last 4 bytes of stdout_pipe, so [stdout_pipe, #4]).
- * child can just use dup3([stdin_pipe], 0, 0) and dup3([stdout_pipe, #4], 1, 0)
- * instead of needing to close their pipes manually. thanks, CLOEXEC!
- */
-
 .global cgi
 
 .global script_ct
@@ -107,20 +95,20 @@ cgi:
 
     // populate query_string and script_name variables
     bl get_script_path_elements
-    b.cs L500
+    b_err L500
     adr_l x0, script_name_buf // save em
     str_l x0, argv
 
     // set env variables... this function just Does it, doesn't need any args.
     bl set_env_vars
-    b.cs L500
+    b_err L500
 
     // SYS_pipe()
     mov x8, #SYS_pipe2
     adr_l x0, stdin_pipe
     mov x1, O_CLOEXEC
     svc #0
-    b.cs L500
+    b_err L500
     str_l w0, cgi_stdin_r
     str_l w1, cgi_stdin_w
 
@@ -128,7 +116,7 @@ cgi:
     mov x0, stdout_pipe
     mov x1, O_CLOEXEC
     svc #0
-    b.cs L500
+    b_err L500
     str_l w0, cgi_stdout_r
     str_l w1, cgi_stdout_w
 
@@ -155,13 +143,13 @@ cgi_parent:
     mov x8, SYS_close
     ldr w0, stdin_pipe // offset 0 = read end
     svc #0
-    b.cs L500
+    b_err L500
     // close stdout_w
     mov x8, SYS_close
     adr_l x1, stdout_pipe
     ldr w0, [x1, #4] // offset 4 = write end
     svc #0
-    b.cs L500
+    b_err L500
 
     ldr_l x0, request_id
     cb eq, x0, #PUT_ID, 1f
@@ -184,6 +172,7 @@ cgi_parent:
     ldr_l x1, header_len
     bl parse_content_length
     b.cc 2f // if there is content-length, just continue and skip the next check
+    // XXX XXX THIS WILL NEED TO CHANGE
 
     // if we're here, there's no content length. that's fine for POST. ymawky
     // requires content length for PUT, however, so let's check that.
@@ -227,7 +216,7 @@ cgi_parent:
     mov x3, #8
     svc #0
     add sp, sp, #32
-    b.cs L500
+    b_err L500
 
     // gonna calculate it the same way as PUT.
     mov x1, #PUT_MIN_BPS
@@ -243,7 +232,7 @@ cgi_parent:
     adr_l x1, cgi_read_timer
     mov x2, #0
     svc #0
-    b.cs L500
+    b_err L500
 
     // nothing in buf, so skip to the loop
     cbz x24, Lforward_loop
@@ -254,7 +243,7 @@ cgi_parent:
     add x1, x1, x20
     mov x2, x24
     bl write_all
-    b.cs Lhfs_error
+    b_err Lhfs_error
 
 Lforward_loop:
     // remaining = content_length - bytes_so_far
@@ -270,9 +259,7 @@ Lforward_loop:
     cmp x2, x25
     csel x2, x2, x25, lo
     svc #0
-    b.cs Lforward_read_failed
-    //b.cs Lread_failed
-    b.cs Lhfs_error
+    b_err Lforward_read_failed
     cbz x0, Lerror // client closed? before sending full body? dumb. error.
     mov x26, x0 // x26 = bytes just read
 
@@ -281,7 +268,7 @@ Lforward_loop:
     adr_l x1, cgi_buf
     mov x2, x26
     bl write_all
-    b.cs Lhfs_error
+    b_err Lhfs_error
 
     add x24, x24, x26
     b Lforward_loop
@@ -305,7 +292,7 @@ Lforward_done:
     mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
     svc #0
-    b.cs Lhfs_error
+    b_err Lhfs_error
 
 Lnothing_to_forward:
     // this is a boolean. have we already output a header? 0 = no, 1 = yes
@@ -314,7 +301,7 @@ Lnothing_to_forward:
 Lread_loop:
     // read loop will send us to either Lheader_read_loop or Lbody_read_loop,
     // depending on the value of x19. since both functions call read(), and
-    // b.cs Lread_failed if read fails, and Lread_failed might branch *back*
+    // b_err Lread_failed if read fails, and Lread_failed might branch *back*
     // to Lread_loop, we have to know which path we're currently at. that's
     // why we track x19
     cbz x19, Lheader_read_loop
@@ -330,7 +317,7 @@ Lheader_read_loop:
     cbz x2, L502 // if we've filled the whole buffer, gotta give a 502.
                  // BAD gateway!
     svc #0
-    b.cs Lread_failed
+    b_err Lread_failed
     cbz x0, L502 // EOF before terminator also gives 502.
 
     mov x22, x0
@@ -352,7 +339,7 @@ Lheader_read_loop:
     mov x3, script_status_len
     bl get_cgi_header_field
     // now x0/x1 contain pointer/length of value, or carry set if not found
-    b.cs Ldefault_status
+    b_err Ldefault_status
     mov x23, x0 // save pointer
     mov x24, x1 // save length
 
@@ -361,21 +348,21 @@ Lheader_read_loop:
     adr_l x1, cgi_status
     mov x2, cgi_status_len
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     // value from cgi header
     ldr_l x0, clientfd
     mov x1, x23
     mov x2, x24
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     // "\r\n"
     ldr_l x0, clientfd
     adr_l x1, crlf
     mov x2, crlf_len
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     b Lstatus_done
 
@@ -385,14 +372,14 @@ Ldefault_status:
     adr_l x1, cgi_status
     mov x2, cgi_status_len
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     // "200 OK\r\n"
     ldr_l x0, clientfd
     adr_l x1, cgi_200
     mov x2, cgi_200_len
     bl write_all
-    b.cs Lerror
+    b_err Lerror
     // fallthrough
 Lstatus_done:
     // phew. ok. now we gotta check for Content-Type
@@ -402,6 +389,7 @@ Lstatus_done:
     mov x3, script_ct_len
     bl get_cgi_header_field
     b.cc Lgot_ct
+    // XXX XXX THIS WILL NEED TO CHANGE
     // not found... if there's a body, that's bad. Content-Type is required
     // if there's a body! so we gotta check.
     sub x3, x20, x22
@@ -413,7 +401,7 @@ Lgot_ct:
     adr_l x1, cgi_server_headers
     mov x2, cgi_server_headers_len
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     // now, we forward all of the script's headers, minus a couple:
     // the function here doesn't send Status: or Connection: header fields,
@@ -428,7 +416,7 @@ Lgot_ct:
     adr_l x1, crlf
     mov x2, #2
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     // if we have any leftover bytes from the body, write em out now
     sub x2, x20, x22 // leftover length = total - header length
@@ -437,7 +425,7 @@ Lgot_ct:
     adr_l x1, cgi_buf
     add x1, x1, x22 // cgi_buff + header length offset
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
 1:
     mov x19, #1
@@ -448,14 +436,14 @@ Lbody_read_loop:
     adr_l x1, cgi_buf
     mov x2, BUF_SIZE
     svc #0
-    b.cs Lread_failed
+    b_err Lread_failed
     cbz x0, Lloop_end // hit EOF? we're donezo (in a good way)
 
     mov x2, x0
     ldr_l x0, clientfd
     adr_l x1, cgi_buf
     bl write_all
-    b.cs Lerror
+    b_err Lerror
 
     b Lbody_read_loop
 
@@ -485,13 +473,13 @@ cgi_child:
     mov x8, SYS_close
     ldr_l w0, cgi_stdin_w
     svc #0
-    b.cs Lchild_error
+    b_err Lchild_error
 
     // close stdout_r
     mov x8, SYS_close
     ldr_l w0, cgi_stdout_r
     svc #0
-    b.cs Lchild_error
+    b_err Lchild_error
 
     // duplicate the file descriptors to be actually stdin/out
     mov x8, SYS_dup3
@@ -511,7 +499,7 @@ cgi_child:
     mov x8, #12 // SYS_chdir
     adr_l x0, script_path_buf
     svc #0
-    b.cs Lchild_error
+    b_err Lchild_error
 
     // FINALLY we can FUCKING EXECVE
     mov x8, SYS_execve
@@ -626,13 +614,13 @@ fhfs_write_line:
     mov x1, x22 // line start
     mov x2, x23 // line length, without the newlines
     bl write_all
-    b.cs fhfs_write_error
+    b_err fhfs_write_error
 
     mov x0, x21
     adr_l x1, crlf
     mov x2, crlf_len
     bl write_all
-    b.cs fhfs_write_error
+    b_err fhfs_write_error
 
     b fhfs_next_line
 
@@ -641,16 +629,14 @@ fhfs_skip_line:
     b fhfs_next_line
 
 fhfs_done:
-    cmn xzr, xzr // clear carry
+    mov x0, #0
     b fhfs_epilogue
 
 fhfs_malformed:
-    mov x0, #0 // set x0 to #0 to differentiate between write failing and
-               // malformed headers.
+    mov x0, #-1
     // fallthrough
 fhfs_write_error:
     // if we failed due to write, x0 should now be errno.
-    cmp xzr, xzr // set carry
     // fallthrough
 fhfs_epilogue:
     ldr x23, [sp, #48]

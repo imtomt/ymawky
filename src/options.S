@@ -15,7 +15,7 @@ options:
 
     // is this a request for a file in CGI_DIR?
     bl check_cgi_path
-    b.cc Lcgi
+    cbz x0, Lcgi
 
     ldr_l x0, filename_str
     bl stat_path

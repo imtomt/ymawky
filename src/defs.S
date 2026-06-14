@@ -11,16 +11,26 @@
 .macro ldr_l reg, sym, scratch=x9
     adrp \scratch, \sym
     ldr \reg, [\scratch, :lo12:\sym]
+.endm
 
 // and adrp ... (add ...) str ...
 .macro str_l src, sym, scratch=x9
     adrp \scratch, \sym
     str \src, [\scratch, :lo12:\sym]
+.endm
 
 // (c)ompare and (b)ranch, (eq/ne/gt/etc), x0, x1, label
 .macro cb cond, r1, r2, l
     cmp \r1, \r2
     b.\cond \l
+.endm
+
+// since Linux syscalls return -value instead of just setting the carry bit, we
+// can't just use b.cs after syscalls to check for errors. this macro just
+// makes it easier
+.macro b_err label, reg=x0
+    cmn \reg, #4095
+    b.hi \label
 .endm
 
 
@@ -111,6 +121,7 @@
 .equ O_CREAT,        0x40
 .equ O_TRUNC,        0x200
 .equ O_NOFOLLOW,     0x20000
+.equ O_CLOEXEC,      0x80000
 
 .equ AT_SYMLINK_NOFOLLOW, 0x100
 .equ AT_REMOVEDIR,        0x200

@@ -64,7 +64,7 @@ put:
 
     // if it's a request within CGI_DIR, just assume it's a cgi script.
     bl check_cgi_path
-    b.cc Lcgi
+    cbz x0, Lcgi
 
     ldr_l x0, filename_str
     bl stat_path
@@ -88,12 +88,12 @@ Ltarget_missing:
     mov x0, x22
     mov x1, x21
     bl parse_content_length
-    b.cs Lpcl_error
+    b_err Lpcl_error
     mov x21, x0 // save content-length in x21
 
 1:
     bl make_tmp_file
-    b.cs L500
+    b_err L500
 
     str_l x0, filename_tmp_str
     str_l x1, filename_tmp_len
@@ -107,7 +107,7 @@ Ltarget_missing:
     orr x1, x1, #O_NOFOLLOW_ANY
     mov x2, #0644 // rw-r--r--
     svc #0
-    b.cs Lhfs_err
+    b_err Lhfs_err
     mov x25, x0 // save fd into x25
     str_l x0, tmp_fd
 
@@ -125,7 +125,7 @@ Ltarget_missing:
     cmp x22, x21
     csel x2, x22, x21, lo
     bl write_all
-    b.cs Lput_close_and_500
+    b_err Lput_close_and_500
     sub x21, x21, x0
     cbz x21, Lput_done
 
@@ -181,7 +181,7 @@ Lput_readwrite_loop:
     cmp x22, x21
     csel x2, x22, x21, lo
     svc #0
-    b.cs Lput_read_failed
+    b_err Lput_read_failed
 
     // now x0 contains bytes read
     mov x26, x0
@@ -191,7 +191,7 @@ Lput_readwrite_loop:
     adr_l x1, buf
     mov x0, x25
     bl write_all
-    b.cs Lput_close_and_500
+    b_err Lput_close_and_500
 
     // did we read 0 bytes? we're done if so. should this be b.lo? i'd like it
     // to be less than or equal, but i believe lo is just less-than. maybe 2
@@ -294,7 +294,7 @@ Lput_done:
     ldr_l x3, filename_str
     mov x4, #RENAME_NOFOLLOW_ANY
     svc #0
-    b.cs 2f
+    b_err 2f
 
     cbnz x19, L201
     b L204
