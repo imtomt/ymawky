@@ -52,21 +52,21 @@ default_file: .ascii DEFAULT_FILE // also from config.S
 tmp_prefix: .ascii DOCROOT
             .ascii ".ymawky_tmp_"
 .equ tmp_prefix_len, . - tmp_prefix
-.align 3 // tmp_prefix length is odd, realign for the .quad below
+.balign 8 // tmp_prefix length is odd, realign for the .quad below
 tmp_prefix_len_val: .quad tmp_prefix_len
 
 .bss
 // probably way too defensive, but can't hurt, eh?
 filename_buf: .skip filename_buf_size + 1
-.align 3 // fix broken alignment again
+.balign 8 // fix broken alignment again
 filename_buf_tmp: .skip filename_buf_tmp_size + 1
-.align 3
+.balign 8
 range_buf: .skip 19
-.align 3
+.balign 8
 query_buf: .skip query_buf_size
 
 .text
-.align 2
+.balign 4
 
 // take a filename, and create a temporary file for PUT.
 // eg, "test.txt" -> ".ymawky_tmp_<pid>", then that temp file gets written to,

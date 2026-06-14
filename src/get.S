@@ -19,7 +19,7 @@
 .global head
 
 .data
-.align 3
+.balign 8
 
 head_200:
     .ascii "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: "
@@ -42,7 +42,7 @@ good_response_tail:
 .equ good_response_tail_len, . - good_response_tail
 
 .text
-.align 2
+.balign 4
 
 // setup for the "GET" and "HEAD" methods. pretty much just writes the header
 // after getting content length and such.

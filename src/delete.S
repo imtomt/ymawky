@@ -18,7 +18,7 @@
 .global delete
 
 .text
-.align 2
+.balign 4
 
 // handle "DELETE /" method.
 // input

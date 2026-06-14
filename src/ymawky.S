@@ -23,7 +23,7 @@
              // what if google dot com ends up running on ymawky huh?
 
 .data
-.align 3
+.balign 8
 
 rcv_timeout:
     .quad RECV_TIMEOUT // tv_sec
@@ -47,7 +47,7 @@ ignore_signal:
     .quad 0x3 // sa_flags = SA_NOCLDWAIT | SA_NOCLDSTOP
     .quad 0   // sa_mask = nothin
 
-.align 2 // one is a .word (4 bytes)
+.balign 4 // one is a .word (4 bytes)
 one: .word 1
 
 addr:
@@ -110,11 +110,11 @@ ymawky_shutdown: .asciz "ymawky is shutting down :(\n"
 
 
 .bss
-.align 3
+.balign 8
 sockfd:             .skip 8
 
 .text
-.align 2
+.balign 4
 
 _start:
     //mov x28, #0

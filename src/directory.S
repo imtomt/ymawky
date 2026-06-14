@@ -68,13 +68,13 @@ header: .ascii "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nTra
 hex_digits: .ascii "0123456789ABCDEF"
 
 .bss
-.align 3
+.balign 8
 hex_itoa_buf: .skip 16
 .equ chunk_buf_size, 4096 // 4kb buffer for each chunk
 chunk_buf: .skip chunk_buf_size
 
 .text
-.align 3
+.balign 8
 // x0 -> dest current
 // x1 -> source literal
 // x2 -> source length

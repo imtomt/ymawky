@@ -105,7 +105,7 @@ unknown_ct: .ascii "text/plain; charset=utf-8"
 .equ unknown_ct_len, . - unknown_ct
 
 .text
-.align 2
+.balign 4
 
 // run fstat64() on file descirptor, returning file size and type
 // input

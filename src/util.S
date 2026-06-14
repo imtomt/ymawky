@@ -29,7 +29,7 @@
 itoa_buf: .skip 20
 
 .text
-.align 2 // instructions need 4-byte alignment
+.balign 4 // instructions need 4-byte alignment
 
 // write content to a file descriptor, retrying in case of partial-writes.
 // input (same as write() syscall)

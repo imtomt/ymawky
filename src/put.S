@@ -18,7 +18,7 @@
 .global put
 
 .data
-.align 3
+.balign 8
 // struct itimerval for setitimer()
 put_read_timer:
     .quad 0 // it_interval.tv_sec
@@ -30,13 +30,13 @@ put_read_timer:
     .long 0 // -- padding --
 
 .bss
-.align 3
+.balign 8
 filename_tmp_str:     .skip 8
 filename_tmp_len:     .skip 8
 tmp_fd:               .skip 8
 
 .text
-.align 2
+.balign 4
 
 
 // handle "PUT /" method.

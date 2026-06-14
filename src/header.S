@@ -105,7 +105,7 @@ err_ext: .ascii ".html"
 arrows_out: .asciz "\n\n>>>\n"
 .equ arrows_out_len, . - arrows_out
 
-.align 3
+.balign 8
 // lookup table, like the MIME one, for headers. 24 bytes per entry, 8 bytes
 // per each element
 status_table:
@@ -136,14 +136,14 @@ status_table:
 
 .bss
 .equ err_page_buf_size, 64
-.align 3
+.balign 8
 err_page_buf: .skip err_page_buf_size
-.align 3
+.balign 8
 .equ header_buf_size, RESPONSE_HEADER_SIZE
 header_buf:   .skip header_buf_size
 
 .text
-.align 2
+.balign 4
 // input
 // x0 -> status code
 //
@@ -175,7 +175,7 @@ find_http_code:
     mov x2, #0
     ret
 
-.align 2
+.balign 4
 // build a header, store it into header_buf, and then write it to the socket
 // in a loop, accounting for partial-writes.
 // input
@@ -377,7 +377,7 @@ Lbh_epilogue:
     ldp x29, x30, [sp], #64
     ret
 
-.align 2
+.balign 4
 // input
 // x0 -> http code
 // x1 -> boolean, if 0 -> go to child_end// if nonzero -> ret

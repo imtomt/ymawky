@@ -55,7 +55,7 @@ put_str:     .ascii "PUT"
 post_str:    .ascii "POST"
 .equ post_len,    . - post_str
 
-.align 3
+.balign 8
 method_table:
     .quad get_str,     get_len
     .quad head_str,    head_len
@@ -113,7 +113,7 @@ server_addr_port_buf: .skip 8
 
 
 .text
-.align 2
+.balign 4
 // set the environmental vars used for CGI scripts
 // input
 // x0 -> env_var_str_buf

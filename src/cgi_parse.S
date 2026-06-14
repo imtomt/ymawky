@@ -24,18 +24,18 @@ header_end_lflf: .ascii "\n\n"
 
 
 .bss
-.align 3
+.balign 8
 .equ script_name_buf_size, 256
 script_name_buf: .skip script_name_buf_size
 script_name_buf_len: .skip 8
-.align 3
+.balign 8
 .equ script_path_buf_size, 4096
 script_path_buf: .skip script_path_buf_size
 script_path_buf_len: .skip 8
 
 
 .text
-.align 2
+.balign 4
 // is filename_str a file within CGI_DIR?
 // input
 // none -- uses global data
