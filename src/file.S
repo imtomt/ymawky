@@ -117,7 +117,7 @@ unknown_ct: .ascii "text/plain; charset=utf-8"
 // x2 -> size
 // x3 -> executable? 1 = yes, 0 = no
 stat_fd:
-    sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
+    sub sp, sp, #128 // reserve stack buffer
     mov x8, SYS_fstat
 
     mov x1, sp // stat buffer, on the stack
@@ -140,7 +140,7 @@ stat_fd:
     // w1 is unchanged from tst. so, we can use it for the file type return,
     // too.
     and w1, w1, #0xF000 // mask S_IFMT
-    ldr x2, [sp, #96] // load st_size into x2
+    ldr x2, [sp, #OFF_ST_SIZE] // load st_size into x2
 
     mov x0, #0
     b Lstat_fd_end
@@ -153,7 +153,7 @@ Lstat_fd_failed:
     mov x3, #0
     // fallthrough
 Lstat_fd_end:
-    add sp, sp, #160
+    add sp, sp, #128
     ret
 
 
@@ -167,7 +167,7 @@ Lstat_fd_end:
 // x2 -> size
 // x3 -> executable? 1 = yes, 0 = no
 stat_path:
-    sub sp, sp, #160 // reserve stack buffer (stat requires 144 bytes, round up)
+    sub sp, sp, #128 // reserve stack buffer
     mov x8, SYS_newfstatat
     mov x1, x0 // file path
     mov x0, AT_FDCWD
@@ -187,7 +187,7 @@ stat_path:
     cset x3, ne
 
     and w1, w1, #0xF000 // mask S_IFMT
-    ldr x2, [sp, #96] // load st_size into x2
+    ldr x2, [sp, #OFF_ST_SIZE] // load st_size into x2
     mov x0, #0
     b Lstat_path_end
 
@@ -199,7 +199,7 @@ Lstat_path_failed:
     mov x3, #0
     // fallthrough
 Lstat_path_end:
-    add sp, sp, #160
+    add sp, sp, #128
     ret
 
 

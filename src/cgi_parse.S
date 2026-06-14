@@ -13,6 +13,7 @@ cgi_dir: .ascii DOCROOT
          .ascii CGI_DIR
 .equ cgi_dir_len, . - cgi_dir
 
+.balign 8
 // Various linefeeds and such
 crlf: .ascii "\r\n"
 .equ crlf_len, . - crlf
@@ -51,25 +52,29 @@ check_cgi_path:
     // "GET /cgi-bin", we want that to be treated as a CGI request, rather than
     // standard GET. we don't allow directory listing on cgi-bin/.
     ldr_l x0, filename_len
-    mov x1, #(cgi_dir_len - 1)
+    //mov x1, #(cgi_dir_len - 1)
+    mov x1, cgi_dir_len
+    sub x1, x1, #1
     cmp x0, x1
     b.lo Lnot_cgi_file
-bp1:
+
     // check if it matches CGI_DIR/, with the slash
     ldr_l x0, filename_str
     adr_l x1, cgi_dir
     mov x2, cgi_dir_len
     bl streqn_i
     cbnz x0, Lcgi_file
-bp2:
+
     // if we're here, x0 was zero, so it wasn't a match... yet.
     // check if it matches CGI_DIR, without the slash
     ldr_l x0, filename_str
     adr_l x1, cgi_dir
-    mov x2, #(cgi_dir_len - 1) // account for possible missing /
+    //mov x2, #(cgi_dir_len - 1) // account for possible missing /
+    mov x2, cgi_dir_len
+    sub x2, x2, #1
     bl streqn_i
     cbz x0, Lnot_cgi_file // ok, it wasnt CGI_DIR/ or CGI_DIR, so its not a match
-bp3:
+
     // if they DO match, check the length. we want it to be the exact length of
     // CGI_DIR - 1, otherwise GET /cgi-binfoo would "match"
     ldr_l x0, filename_len

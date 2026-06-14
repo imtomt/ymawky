@@ -81,8 +81,8 @@
                         // we want
 
 // stat struct layout
-// note to future self st_mode is at offset 16, it's 4 bytes, load with `ldr w`
 .equ OFF_ST_MODE,    16
+.equ OFF_ST_SIZE,    48
 .equ S_IFREG,        0x8000
 .equ S_IFDIR,        0x4000
 .equ S_IXUSR,        0x40

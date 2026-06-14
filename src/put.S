@@ -70,7 +70,7 @@ put:
     bl stat_path
     cbz x0, Ltarget_exists
 
-    cmp x0, #ENOENT
+    cmn x0, #ENOENT
     b.eq Ltarget_missing
 
     b handle_fs_error
@@ -202,7 +202,7 @@ Lput_readwrite_loop:
     b Lput_readwrite_loop
 
 Lput_read_failed:
-    cmp x0, #EINTR
+    cmn x0, #EINTR
     b.eq Lput_readwrite_loop
 
     mov x20, x0 // save errno

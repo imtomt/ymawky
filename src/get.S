@@ -66,7 +66,6 @@ get_setup:
     cmp w1, #'*'
     b.eq L400
 
-gbp:
     // check if the path requested is in CGI_DIR
     bl check_cgi_path
     cbz x0, Lcgi // branch to cgi handler if so

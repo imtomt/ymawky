@@ -402,7 +402,7 @@ Lno_header:
 read_failed:
     // if read was interrupted by a signal, retry instead of exiting. doesn't
     // affect x7/buf offset.
-    cmp x0, #EINTR
+    cmn x0, #EINTR
     b.eq read_loop
     // check if errno is ECONNRESET, ECONNABORTED, ETIMEDOUT, then just
     // silently exit if so. otherwise, return server error.

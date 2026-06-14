@@ -292,7 +292,7 @@ Lforward_loop:
     b Lforward_loop
 
 Lforward_read_failed:
-    cmp x0, #EINTR
+    cmn x0, #EINTR
     b.eq Lforward_loop
     b Lerror
 
@@ -469,7 +469,7 @@ Lbody_read_loop:
     b Lbody_read_loop
 
 Lread_failed:
-    cmp x0, #EINTR
+    cmn x0, #EINTR
     b.eq Lread_loop
 
     // otherwise, it's an error :(

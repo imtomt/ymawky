@@ -288,7 +288,7 @@ parse_range:
     adr_l x2, range_match_str
     mov x3, range_match_len
     bl get_header_field
-    b_err pr_no_range // wasn't found, oh well!
+    cbz x0, pr_no_range // wasn't found, oh well!
 
     mov x22, x0 // pointer to beginning of data
     mov x23, x1 // remaining length in header field
@@ -443,7 +443,7 @@ parse_content_length:
     adr_l x2, content_len_match_str
     mov x3, content_len_match_len
     bl get_header_field
-    b_err pcl_err
+    cbz x0, pcl_err
 
     mov x19, x0
     mov x20, x1
