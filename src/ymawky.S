@@ -234,40 +234,6 @@ loop:
     // fork -- it's much easier to debug with lldb if there's no forking :(
     cbnz x28, child
 
-//    mov x8, SYS_getpid
-//    svc #0
-    // x0 now contains pid
-
-//    // gotta check if number of processes is > MAX_PROCS. luckily, apple has an
-//    // undocumented syscall, "proc_info", that allows us to get all children of
-//    // this process into a buffer. in the buffer, each child pid is stored as a
-//    // 32-bit integers.
-//    sub sp, sp, #2048 // allocate a bit of stack space for the proc_info buf
-//    mov x8, SYS_proc_info
-//    mov x2, x0 // our pid. wondering why we called gitpid() a minute ago? //)
-//    mov x0, PROC_INFO_CALL_LISTPIDS
-//    mov x1, PROC_PPID_ONLY
-//    mov x3, #0
-//    mov x4, sp
-//    mov x5, #2048
-//    svc #0
-
-    // proc_info returns the number of bytes written to the stack. if we divide
-    // by 4, it tells us the total number of procs.
-//    lsr x0, x0, #2
-//    add sp, sp, #2048 // now we can free up the stack space
-
-    // is the nuymber of procs > MAX_PROCS? 503 if so.
-//    cmp x0, #MAX_PROCS
-//    b.ls 8f
-
-    // uh-oh, we're at the max processes. let's give a nice, kind, smart, cute,
-    // lil, friendly 503 :3
-//    mov x0, #503
-//    mov x1, #1 // we DO want to return here!
-//    bl reply_status
-//    b 2f // close n loop!
-
 8:
     // clone()
     mov x8, SYS_clone
