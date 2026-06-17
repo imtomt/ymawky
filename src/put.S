@@ -66,6 +66,11 @@ put:
     bl check_cgi_path
     cbz x0, Lcgi
 
+    // if it's not a CGI script, and the request is POST, we should give a 405
+    ldr_l x0, request_id
+    cmp x0, POST_ID
+    b.eq L405
+
     ldr_l x0, filename_str
     bl stat_path
     cbz x0, Ltarget_exists
@@ -354,6 +359,10 @@ L400:
     b reply_status
 L403:
     mov x0, #403
+    mov x1, #0
+    b reply_status
+L405:
+    mov x0, #405
     mov x1, #0
     b reply_status
 L408:

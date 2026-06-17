@@ -12,6 +12,7 @@ done <<EOF
 403:Forbidden:the rats won't let you do that
 404:Not Found:the rats ate this page
 408:Request Timeout:the rats grew bored
+405:Method Not Allowed:the rats won't let you do that
 409:Conflict:the rats found a conflict
 411:Length Required:the rats need the length
 413:Content Too Large:that's too big for tiny rats

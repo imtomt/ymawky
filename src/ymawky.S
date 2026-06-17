@@ -198,7 +198,6 @@ skip_argv:
 
     // set up SIG_IGN on SIGCHLD, with SA_NOCLDWAIT to tell the kernel to auto
     // reap children. previously zombies were piling up :(
-
     mov x8, SYS_rt_sigaction
     mov x0, #SIGCHLD
     adr_l x1, ignore_signal
@@ -271,16 +270,6 @@ child:
     svc #0
     b_err child_end
 
-    // setsockopt(), SO_NOSIGPIPE
-    //mov x8, SYS_setsockopt
-    //ldr_l x0, clientfd
-    //mov x1, 0xFFFF // SOL_SOCKET
-    //mov x2, 0x1022 // SO_NOSIGPIPE
-    //adr_l x3, one
-    //mov x4, #4
-    //svc #0
-    //b_err child_end
-
     // arm timer before reading
     mov x8, SYS_setitimer
     mov x0, #0 // ITIMER_REAL
@@ -291,14 +280,12 @@ child:
     svc #0
 
     // set a signal handler for SIGALRM, so we can respond with 408 if the
-    // connection times out during the header. see the long ass comment in
-    // put.S for a more detailed explanation of this, since it's extremely
-    // not-portable. macOS only. yuck. (it shouldn't be too hard to port to
-    // linux though).
+    // connection times out during the header.
+    // i was right this is actually much much simpler in linux than macos lol
     sub sp, sp, #32
     adr_l x0, L408
-    str x0, [sp, #0]  // sa_handler
-    str wzr, [sp, #8] // sa_flags
+    str x0, [sp, #0]   // sa_handler
+    str wzr, [sp, #8]  // sa_flags
     str wzr, [sp, #16] // sa_mask
 
     mov x8, SYS_rt_sigaction
@@ -501,7 +488,6 @@ Ldelete_method:
 Lpost_method:
     mov x0, POST_ID
     str_l x0, request_id
-    // TODO FIXME XXX HACK actually make post
     b put
 
 

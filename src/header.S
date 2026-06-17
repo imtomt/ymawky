@@ -42,6 +42,9 @@ header_403: .ascii "HTTP/1.1 403 Forbidden"
 header_404: .ascii "HTTP/1.1 404 Not Found"
 .equ header_404_len, . - header_404
 
+header_405: .ascii "HTTP/1.1 405 Method Not Allowed"
+.equ header_405_len, . - header_405
+
 header_408: .ascii "HTTP/1.1 408 Request Timeout"
 .equ header_408_len, . - header_408
 
@@ -117,6 +120,7 @@ status_table:
     .quad 400,    header_400,  header_400_len
     .quad 403,    header_403,  header_403_len
     .quad 404,    header_404,  header_404_len
+    .quad 405,    header_405,  header_405_len
     .quad 408,    header_408,  header_408_len
     .quad 409,    header_409,  header_409_len
     .quad 411,    header_411,  header_411_len
