@@ -578,7 +578,7 @@ sc_epilogue:
     ldp x19, x20, [sp, #16]
     ldp x29, x30, [sp], #96
     ret
-    
+
 
 // handler function for fstat64() failing. route to the proper HTTP reponse
 // based on errno.

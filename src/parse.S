@@ -92,7 +92,7 @@ make_tmp_file:
     // quit if it's too big. we don't want to accidentally write into other
     // memory
     cmp x23, x24
-    b.hi mtf_err 
+    b.hi mtf_err
 
     // copy tmp_prefix to filename_buf_tmp
     adr_l x0, filename_buf_tmp
@@ -548,7 +548,6 @@ pcl_malformed:
 pcl_err:
     mov x0, #-3 // 0 means other error, like no content-length found
     // fall through
-
 pcl_epilogue:
     ldp x21, x22, [sp, #32]
     ldp x19, x20, [sp, #16]
@@ -561,7 +560,7 @@ pcl_epilogue:
 // x1 -> length of header
 // x2 -> boolean, if 1/true, default to "index.html" default filename. if
 //       0/false, do not give a default filename.
-// 
+//
 // return
 // x0 -> string containing requested file name
 // x1 -> length of said file name
@@ -612,7 +611,7 @@ Lstrchr_loop:
     // NULL byte reached. increment string index and loop
     add x0, x0, #1 // increment the string pointer
     add x23, x23, #1 // increment the byte counter so we can quit at 16 bytes
-    
+
     // save previous byte so we can check for preceding ' '
     mov w2, w3
     b Lstrchr_loop

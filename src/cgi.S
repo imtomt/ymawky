@@ -1,7 +1,19 @@
-#include "defs.S"
+// This file is part of ymawky.
+// Copyright (C) 2026 imtomt
+//
+// ymawky is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 3.
+//
+// ymawky is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with ymawky. If not, see <https://www.gnu.org/licenses/>.
 
-// this file is ugly and long as fuck. TODO: clean it up, split into multiple
-// different files.
+#include "defs.S"
 
 .global cgi
 
@@ -141,7 +153,7 @@ about_to_fork:
 
     // if not, then we're the...
 cgi_parent:
-    str_l x0, child_pid // store the pid of the child process XXX
+    str_l x0, child_pid // store the pid of the child process
     // we can close() the unused fds
     // close stdin_r
     mov x8, SYS_close

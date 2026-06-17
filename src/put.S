@@ -199,7 +199,7 @@ Lput_readwrite_loop:
 
     // did we read 0 bytes? we're done if so. should this be b.lo? i'd like it
     // to be less than or equal, but i believe lo is just less-than. maybe 2
-    // cmps? like cmp #0, b.eq, and b.lo? 
+    // cmps? like cmp #0, b.eq, and b.lo?
     cbz x26, Lput_read_zero
 
     b Lput_readwrite_loop

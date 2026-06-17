@@ -1,3 +1,18 @@
+// This file is part of ymawky.
+// Copyright (C) 2026 imtomt
+//
+// ymawky is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 3.
+//
+// ymawky is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with ymawky. If not, see <https://www.gnu.org/licenses/>.
+
 #include "defs.S"
 
 .global dir_listing
@@ -337,7 +352,7 @@ write_with_chunk_length:
     mov x19, x0 // file descriptor
     mov x20, x1 // content
     mov x21, x2 // length
-    
+
     // encode chunk length to hex
     mov x0, x21
     adr_l x1, hex_itoa_buf
@@ -400,7 +415,7 @@ write_chunk:
     mov x22, x0 // save offset
 
     // copy filename, again
-    adr_l x0, chunk_buf 
+    adr_l x0, chunk_buf
     sub x2, x22, x0 // bytes already used
     mov x1, chunk_buf_size
     sub x2, x1, x2 // remaining dest space

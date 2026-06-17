@@ -191,7 +191,7 @@ Latoi_n_error:
 // x0 -> destination
 // x1 -> source
 // x2 -> length
-// 
+//
 // clobbers x0, x1, and x3
 memcpy:
     cbz x2, 1f
