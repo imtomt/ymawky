@@ -493,7 +493,6 @@ reply_status:
 
     mov x0, x24
     mov x1, #-1
-    mov x2, #-1
     mov x3, x19
     bl build_header
 
@@ -577,7 +576,6 @@ sc_epilogue:
     ret
     
 
-
 // handler function for fstat64() failing. route to the proper HTTP reponse
 // based on errno.
 // TODO this should probably go in file.S?
@@ -587,47 +585,55 @@ sc_epilogue:
 // output
 // none, branches to reply_status and quits.
 handle_fs_error:
-    cb eq, x0, #ENAMETOOLONG, L414
-    cb eq, x0, #EINVAL, L400
+    cnb eq, x0, #ENAMETOOLONG, L414
+    cnb eq, x0, #EINVAL, L400
     // 403 since it's caused by O_NOFOLLOW_ANY most likely. if we ever allow
     // symlinks, note that this should be 508.
-    cb eq, x0, #ELOOP, L403
-    cb eq, x0, #ENOTDIR, L404
-    cb eq, x0, #ENOENT, L404
-    cb eq, x0, #EACCES, L403
-    cb eq, x0, #EPERM, L403
-    cb eq, x0, #EROFS, L403
-    cb eq, x0, #EISDIR, L403
-    cb eq, x0, #EFAULT, L500
-    cb eq, x0, #EBUSY, L409
-    cb eq, x0, #ENOTEMPTY, L409
-    cb eq, x0, #ENOSPC, L507
-    cb eq, x0, #EDQUOT, L507
-    cb eq, x0, #EFBIG, L413
+    cnb eq, x0, #ELOOP, L403
+    cnb eq, x0, #ENOTDIR, L404
+    cnb eq, x0, #ENOENT, L404
+    cnb eq, x0, #EACCES, L403
+    cnb eq, x0, #EPERM, L403
+    cnb eq, x0, #EROFS, L403
+    cnb eq, x0, #EISDIR, L403
+    cnb eq, x0, #EFAULT, L500
+    cnb eq, x0, #EBUSY, L409
+    cnb eq, x0, #ENOTEMPTY, L409
+    cnb eq, x0, #ENOSPC, L507
+    cnb eq, x0, #EDQUOT, L507
+    cnb eq, x0, #EFBIG, L413
 
     b L500
 
 L400:
     mov x0, #400
+    mov x1, #0
     b reply_status
 L403:
     mov x0, #403
+    mov x1, #0
     b reply_status
 L404:
     mov x0, #404
+    mov x1, #0
     b reply_status
 L409:
     mov x0, #409
+    mov x1, #0
     b reply_status
 L413:
     mov x0, #413
+    mov x1, #0
     b reply_status
 L414:
     mov x0, #414
+    mov x1, #0
     b reply_status
 L500:
     mov x0, #500
+    mov x1, #0
     b reply_status
 L507:
     mov x0, #507
+    mov x1, #0
     b reply_status

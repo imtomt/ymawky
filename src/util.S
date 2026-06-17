@@ -67,8 +67,7 @@ write_all:
     ret
 
 Lwrite_fail:
-    cmn x0, #EINTR
-    b.eq 1b
+    cnb eq, x0, #EINTR, 1b
 
     // x0 is already errno
     b 3b

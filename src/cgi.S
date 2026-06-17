@@ -134,8 +134,7 @@ about_to_fork:
     mov x3, #0
     mov x4, #0
     svc #0
-    cmn x0, #4095
-    b.hi L500 // just bail if fork fails
+    b_err L500
 
     // are we the child?
     cbz x0, cgi_child
@@ -285,8 +284,7 @@ Lforward_loop:
     b Lforward_loop
 
 Lforward_read_failed:
-    cmn x0, #EINTR
-    b.eq Lforward_loop
+    cnb eq, x0, #EINTR, Lforward_loop
     b Lerror
 
 Lcgi_read_zero:
@@ -349,8 +347,10 @@ Lheader_read_loop:
     adr_l x2, script_status
     mov x3, script_status_len
     bl get_cgi_header_field
+
     // now x0/x1 contain pointer/length of value, or carry set if not found
-    b_err Ldefault_status
+    cbz x0, Ldefault_status
+
     mov x23, x0 // save pointer
     mov x24, x1 // save length
 
@@ -400,7 +400,6 @@ Lstatus_done:
     mov x3, script_ct_len
     bl get_cgi_header_field
     cbnz x0, Lgot_ct
-    // XXX XXX THIS WILL NEED TO CHANGE
     // not found... if there's a body, that's bad. Content-Type is required
     // if there's a body! so we gotta check.
     sub x3, x20, x22
@@ -459,8 +458,7 @@ Lbody_read_loop:
     b Lbody_read_loop
 
 Lread_failed:
-    cmn x0, #EINTR
-    b.eq Lread_loop
+    cnb eq, x0, #EINTR, Lread_loop
 
     // otherwise, it's an error :(
     b Lerror

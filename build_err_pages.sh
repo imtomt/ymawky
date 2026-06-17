@@ -21,6 +21,7 @@ done <<EOF
 431:Header Header Fields Too Large:tiny rats need tiny heads
 500:Internal Server Error:the rats chewed the server's wires
 501:Not Implemented:the rats haven't learned how to do that
+502:Bad Gateway:the rats broke this page
 503:Service Unavailable:the rats are currently busy
 505:HTTP Version Not Supported:the rats are too old skool
 507:Insufficient Storage:the rats can't store that anywhere

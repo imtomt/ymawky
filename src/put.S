@@ -70,8 +70,7 @@ put:
     bl stat_path
     cbz x0, Ltarget_exists
 
-    cmn x0, #ENOENT
-    b.eq Ltarget_missing
+    cnb eq, x0, #ENOENT, Ltarget_missing
 
     b handle_fs_error
 
@@ -169,8 +168,7 @@ Ltarget_missing:
     // if sigaction fails, it's due to some memory issue. that should always
     // be a 500. i don't want to just silently fail and let any connections go
     // un-timedout, so just throw a 500 and take the shit.
-    cmn x0, #4095
-    b.hi Lput_close_and_500
+    b_err Lput_close_and_500
 
     mov x22, #BUF_SIZE // from defs.S, 16KB
 Lput_readwrite_loop:
@@ -202,24 +200,23 @@ Lput_readwrite_loop:
     b Lput_readwrite_loop
 
 Lput_read_failed:
-    cmn x0, #EINTR
-    b.eq Lput_readwrite_loop
+    cnb eq, x0, #EINTR, Lput_readwrite_loop
 
     mov x20, x0 // save errno
     bl Lput_cleanup_tmp_file
     mov x0, x20 // restore
 
-    cb eq, x0, #EAGAIN, L408
+    cnb eq, x0, #EAGAIN, L408
     // all of these should just silently exit
-    cb eq, x0, #ECONNRESET, Lchild_end
-    cb eq, x0, #ETIMEDOUT, Lchild_end
-    cb eq, x0, #ECONNABORTED, Lchild_end
-    cb eq, x0, #EPIPE, Lchild_end
-    cb eq, x0, #ENETDOWN, Lchild_end
-    cb eq, x0, #ENETUNREACH, Lchild_end
-    cb eq, x0, #ENETRESET, Lchild_end
-    cb eq, x0, #EHOSTDOWN, Lchild_end
-    cb eq, x0, #EHOSTUNREACH, Lchild_end
+    cnb eq, x0, #ECONNRESET, Lchild_end
+    cnb eq, x0, #ETIMEDOUT, Lchild_end
+    cnb eq, x0, #ECONNABORTED, Lchild_end
+    cnb eq, x0, #EPIPE, Lchild_end
+    cnb eq, x0, #ENETDOWN, Lchild_end
+    cnb eq, x0, #ENETUNREACH, Lchild_end
+    cnb eq, x0, #ENETRESET, Lchild_end
+    cnb eq, x0, #EHOSTDOWN, Lchild_end
+    cnb eq, x0, #EHOSTUNREACH, Lchild_end
 
     // none of those, so something weird's going on. just 500.
     b L500

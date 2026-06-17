@@ -58,23 +58,21 @@ delete:
 // different label names for clarity when reading hehe
 Ldelete_stat_failed:
 Lunlink_failed:
-    neg x0, x0 // errno gets returned as a negative, so make it positive
-
     // if the file doesn't exist (or was previously deleted), just reply 204
     // since DELETE is idempotent.
-    cb eq, x0, #ENOENT, L204
+    cnb eq, x0, #ENOENT, L204
 
     // if it's a dir, say it's not allowed. this could be 405, but i don't
     // want to build Allow: headers properly, lol. at least yet.
-    cb eq, x0, #EISDIR, L403
+    cnb eq, x0, #EISDIR, L403
     // other various 403s.
-    cb eq, x0, #EACCES, L403
-    cb eq, x0, #EPERM, L403
-    cb eq, x0, #EROFS, L403
+    cnb eq, x0, #EACCES, L403
+    cnb eq, x0, #EPERM, L403
+    cnb eq, x0, #EROFS, L403
     // file is busy/conflict
-    cb eq, x0, #EBUSY, L409
+    cnb eq, x0, #EBUSY, L409
     // symlink
-    cb eq, x0, #ELOOP, L403
+    cnb eq, x0, #ELOOP, L403
 
     // just default to 500
     b L500

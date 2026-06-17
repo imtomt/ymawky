@@ -205,8 +205,7 @@ skip_argv:
     mov x2, #0 // old action = NULL
     mov x3, #8
     svc #0
-    cmn x0, #4095
-    b.hi exit
+    b_err exit
 
     // ignore SIGPIPE so write() returns EPIPE instead of killing us
     mov x8, SYS_rt_sigaction
@@ -215,8 +214,7 @@ skip_argv:
     mov x2, #0
     mov x3, #8
     svc #0
-    cmn x0, #4095
-    b.hi exit
+    b_err exit
 
 loop:
     // accept(sockfd, NULL, NULL)
@@ -360,19 +358,19 @@ Lno_header:
 read_failed:
     // if read was interrupted by a signal, retry instead of exiting. doesn't
     // affect x7/buf offset.
-    cmn x0, #EINTR
-    b.eq read_loop
+    cnb eq, x0, #EINTR, read_loop
+
     // check if errno is ECONNRESET, ECONNABORTED, ETIMEDOUT, then just
     // silently exit if so. otherwise, return server error.
-    cb eq, x0, #ECONNRESET, child_end
-    cb eq, x0, #ETIMEDOUT, child_end
-    cb eq, x0, #ECONNABORTED, child_end
-    cb eq, x0, #EPIPE, child_end
-    cb eq, x0, #ENETDOWN, child_end
-    cb eq, x0, #ENETUNREACH, child_end
-    cb eq, x0, #ENETRESET, child_end
-    cb eq, x0, #EHOSTDOWN, child_end
-    cb eq, x0, #EHOSTUNREACH, child_end
+    cnb eq, x0, #ECONNRESET, child_end
+    cnb eq, x0, #ETIMEDOUT, child_end
+    cnb eq, x0, #ECONNABORTED, child_end
+    cnb eq, x0, #EPIPE, child_end
+    cnb eq, x0, #ENETDOWN, child_end
+    cnb eq, x0, #ENETUNREACH, child_end
+    cnb eq, x0, #ENETRESET, child_end
+    cnb eq, x0, #EHOSTDOWN, child_end
+    cnb eq, x0, #EHOSTUNREACH, child_end
 
     b L500
 

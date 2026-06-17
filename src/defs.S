@@ -25,6 +25,13 @@
     b.\cond \l
 .endm
 
+// (c)ompare (n)egative and (b)ranch, (eq/ne ONLY), x0, x1, label
+.macro cnb cond, r1, r2, l
+    cmn \r1, \r2
+    b.\cond \l
+.endm
+
+
 // since Linux syscalls return -value instead of just setting the carry bit, we
 // can't just use b.cs after syscalls to check for errors. this macro just
 // makes it easier
