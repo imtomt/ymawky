@@ -37,7 +37,91 @@ tmp_fd:               .skip 8
 
 .text
 .balign 4
+// given a path, check if any symlinks are in the path. NOTE this is probably
+// pretty ineffecient: it gets the dirname of the requested file, tries to
+// openat2() it with RESOLVE_NO_SYMLINKS, checks for failure, and then closes
+// the dirfd to resume on success.
+// input
+// none, uses stuff from data.S
+//
+// output
+// x0 -> 0 on success, errno from openat2() on failure
+put_check_symlink:
+    stp x29, x30, [sp, #-48]!
+    stp x19, x20, [sp, #16]
+    str x21, [sp, #32]
 
+    ldr_l x19, filename_str
+    ldr_l x20, filename_len
+    mov x0, #0
+    mov x21, #-1
+
+Lfind_slash_loop:
+    cmp x0, x20
+    b.gt Lloop_done
+    ldrb w1, [x19, x0]
+    cmp w1, #'/'
+    b.eq Lfound_slash
+    b Lloop_next
+
+Lfound_slash:
+    mov x21, x0 // store the position of the most recent /
+    // fallthrough
+Lloop_next:
+    add x0, x0, #1
+    b Lfind_slash_loop
+
+Lloop_done:
+    // now x2 contains the index of the last /
+    cmp x2, #0
+    b.eq Lpcs_done
+
+    // replace the right-most / with a NULL character
+    strb wzr, [x19, x21]
+
+    // now try to open the dir
+    sub sp, sp, #32
+    mov x0, #O_RDONLY
+    mov x1, #0
+    mov x2, #RESOLVE_NO_XDEV
+    orr x2, x2, #RESOLVE_NO_SYMLINKS
+    stp x0, x1, [sp]
+    str x2, [sp, #16]
+
+    mov x8, SYS_openat2
+    mov x0, AT_FDCWD
+    mov x1, x19
+    mov x2, sp
+    mov x3, #24
+    svc #0
+    add sp, sp, #32
+
+    // restore the NULL back to / before we do anything else
+    mov w1, #'/'
+    strb w1, [x19, x21]
+
+    cnb eq, x0, #ELOOP Lpcs_symlink
+    // any other errno should be fine. our code will deal with it elsewhere i'm
+    // sure. we don't need to close anything if it didn't open in the first
+    // place.
+    b_err Lpcs_done
+
+    mov x8, SYS_close
+    // x0 is already set
+    svc #0
+    // fallthrough
+Lpcs_done:
+    mov x0, #0
+    b Lpcs_epilogue
+
+Lpcs_symlink:
+    // here, x0 is already -ELOOP. don't touch it. just a label for readability
+    // fallthrough
+Lpcs_epilogue:
+    ldr x21, [sp, #32]
+    ldp x19, x20, [sp, #16]
+    ldp x29, x30, [sp], #48
+    ret
 
 // handle "PUT /" method.
 // input
@@ -61,6 +145,9 @@ put:
     ldrb w1, [x0]
     cmp w1, #'*'
     b.eq L400
+
+    bl put_check_symlink
+    cbnz x0, L403
 
     // if it's a request within CGI_DIR, just assume it's a cgi script.
     bl check_cgi_path
