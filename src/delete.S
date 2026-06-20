@@ -45,22 +45,6 @@ delete:
     cbnz x0, Ldelete_stat_failed
     cb ne, w1, #S_IFREG, L403
 
-    // check if any element is a symlink by opening it with RESOLVE_NO_SYMLINK
-    // if it fails, it contains a symlink. delete_stat_failed routes ELOOP to
-    // 403.
-    mov x0, #AT_FDCWD
-    ldr_l x1, filename_str
-    mov x2, #O_RDONLY
-    mov x3, #0
-    open_no_symlink
-    b_err Ldelete_stat_failed
-
-    // if we're here we're good
-    mov x8, SYS_close
-    // x0 is already set
-    svc #0
-    b_err Ldelete_stat_failed
-
     mov x8, SYS_unlinkat
     mov x0, #AT_FDCWD
     ldr_l x1, filename_str
