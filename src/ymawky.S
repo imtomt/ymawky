@@ -1,4 +1,4 @@
-// ymawky.S -- Web server in ARM64 assembly for MacOS
+// ymawky.S -- Web server in ARM64 assembly
 // This file is part of ymawky.
 // Copyright (C) 2026 imtomt
 //
