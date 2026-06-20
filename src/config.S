@@ -4,7 +4,7 @@
 #define DOCROOT "www/"
 
 // Default directory where CGI scripts will be stored.
-// This is inside DOCROOT. Set this to a nonexisten directory if you don't
+// This is inside DOCROOT. Set this to a nonexistent directory if you don't
 // want CGI.
 // Default: cgi-bin/
 #define CGI_DIR "cgi-bin/"
