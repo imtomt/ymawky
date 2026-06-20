@@ -474,25 +474,37 @@ reply_status:
     str_l x20, filename_len
 
     // ok now err_page_buf should be something like "err/404.html". now we
-    // gotta basically GET that shit.
-    mov x8, SYS_openat
+    // gotta basically GET that shit. theoretically err_page_buf should be
+    // guaranteed to be safe, BUT! what if it's not? can't be too careful. and
+    // it's not really that much more intensive to use, so...
+    add sp, sp, #32
+    mov x0, #O_RDONLY
+    mov x1, #0
+    mov x2, #RESOLVE_NO_XDEV
+    orr x2, x2, #RESOLVE_NO_SYMLINKS
+    stp x0, x1, [sp]
+    str x2, [sp, #16]
+
+    mov x8, SYS_openat2
     mov x0, AT_FDCWD
-    adr_l x1, err_page_buf
-    mov x2, #0 // RDONLY
-    orr x2, x2, #O_NOFOLLOW // can't be too careful now can we?
+    ldr_l x1, err_page_buf
+    mov x2, sp
+    mov x3, #24
     svc #0
+    add sp, sp, #32
     b_err sc_err
     mov x23, x0 // save the fd
 
-    // x0 is still set tho
+    // x0 is still set tho so we don't need to mov it again
     bl stat_fd
     cbnz x0, sc_err
+
     cmp w1, #S_IFREG
-
     b.ne sc_err
-    cmp x2, #0
 
+    cmp x2, #0
     b.eq sc_err // empty file, just do the http code alone
+
     mov x24, x2 // save the file size
 
     mov x0, x24

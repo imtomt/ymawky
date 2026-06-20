@@ -61,7 +61,7 @@
 .equ SYS_clone,         220
 .equ SYS_read,          63
 .equ SYS_write,         64
-.equ SYS_openat,        56
+.equ SYS_openat2,       437
 .equ SYS_close,         57
 .equ SYS_wait4,         260
 .equ SYS_getpid,        172
@@ -157,6 +157,8 @@
 .equ O_NOFOLLOW,     0x20000
 .equ O_CLOEXEC,      0x80000
 
+.equ RESOLVE_NO_SYMLINKS, 0x04
+.equ RESOLVE_NO_XDEV,     0x01
 .equ AT_SYMLINK_NOFOLLOW, 0x100
 .equ AT_REMOVEDIR,        0x200
 .equ AT_FDCWD,           -100
