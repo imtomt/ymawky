@@ -70,6 +70,7 @@
 .equ SYS_kill,          129
 .equ SYS_pipe2,         59
 .equ SYS_rt_sigaction,  134
+.equ SYS_rt_sigreturn,  139
 .equ SYS_execve,        221
 .equ SYS_munmap,        215
 .equ SYS_setitimer,     103
@@ -116,6 +117,7 @@
 .equ EPERM,          1
 .equ ENOENT,         2
 .equ EINTR,          4
+.equ ECHILD,         10
 .equ EACCES,         13
 .equ EFAULT,         14
 .equ EBUSY,          16
@@ -144,7 +146,9 @@
 .equ SIGALRM,        14
 .equ SIGCHLD,        17
 .equ SIG_IGN,        1
+.equ SA_RESTORER,    0x04000000
 .equ SA_NOCLDWAIT,   0x00000002
+.equ WNOHANG,        0x00000001
 
 .equ O_RDONLY,       0x0000
 .equ O_WRONLY,       0x0001

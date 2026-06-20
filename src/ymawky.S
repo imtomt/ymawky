@@ -112,6 +112,7 @@ ymawky_shutdown: .asciz "ymawky is shutting down :(\n"
 .bss
 .balign 8
 sockfd:             .skip 8
+active_children:    .skip 8
 
 .text
 .balign 4
@@ -196,16 +197,6 @@ skip_argv:
     mov x2, ymawky_connected_len
     svc #0
 
-    // set up SIG_IGN on SIGCHLD, with SA_NOCLDWAIT to tell the kernel to auto
-    // reap children. previously zombies were piling up :(
-    mov x8, SYS_rt_sigaction
-    mov x0, #SIGCHLD
-    adr_l x1, ignore_signal
-    mov x2, #0 // old action = NULL
-    mov x3, #8
-    svc #0
-    b_err exit
-
     // ignore SIGPIPE so write() returns EPIPE instead of killing us
     mov x8, SYS_rt_sigaction
     mov w0, #SIGPIPE
@@ -215,6 +206,67 @@ skip_argv:
     svc #0
     b_err exit
 
+    // set up our custom child signal handler thingy. whenever we receive
+    // SIGCHLD, call our sighandler function, which calls wait4 to reap the
+    // children, and modify the counter of active children. that way we can
+    // refuse connections if the server is at it's configured max.
+    sub sp, sp, #32
+    adr_l x0, sighandler
+    str x0, [sp, #0]
+    mov x0, #SA_RESTORER
+    str x0, [sp, #8]
+    adr_l x0, sigret
+    str x0, [sp, #16]
+
+    mov x8, SYS_rt_sigaction
+    mov w0, #SIGCHLD
+    mov x1, sp
+    mov x2, #0
+    mov x3, #8
+    svc #0
+    add sp, sp, #32
+    b_err exit
+
+    // skip straight to the loop.
+    b loop
+
+// just some labels for signal handling. we do NOT fall through to here.
+sighandler:
+    mov x8, SYS_wait4
+    mov x0, #-1
+    mov x1, #0
+    mov x2, #WNOHANG
+    mov x3, #0
+    svc #0
+
+    cmp x0, #0
+    b.gt 1f
+    b.eq sigret // if it returned 0 we're done
+    cnb eq, x0, #ECHILD, 2f
+    b exit // if we're here, wait4 returned some errno other than ECHILD. die
+
+1:
+    ldr_l x0, active_children
+    sub x0, x0, #1
+
+    // if x0 >= 0, keep x0 as x0. otherwise, if x0 is negative, set it to 0.
+    // we shouldn't ever go negative here, but you can never be too safe...
+    cmp x0, #0
+    csel x0, x0, xzr, ge
+    str_l x0, active_children
+    b sighandler
+
+2:
+    str_l xzr, active_children
+    b sigret
+    // i guess i could just have it fall through here... but this is just more
+    // readable. sorry i'm not quirky enough :(
+
+sigret:
+    mov x8, SYS_rt_sigreturn
+    svc #0
+
+// now that THAT'S outta the way.... here's the continuation of our actual code
 loop:
     // accept(sockfd, NULL, NULL)
     mov x8, SYS_accept
@@ -231,7 +283,24 @@ loop:
     // fork -- it's much easier to debug with lldb if there's no forking :(
     cbnz x28, child
 
+    // gotta check if number of processes is > MAX_PROCS and fail if it is.
+    ldr_l x0, active_children
+    cmp x0, #MAX_PROCS
+    b.lt 8f
+
+    // uh-oh, we're at the max processes. let's give a nice, kind, smart, cute,
+    // lil, friendly 503 :3
+    mov x0, #503
+    mov x1, #1 // we DO want to return here!
+    bl reply_status
+    b 2f // close n loop!
+
 8:
+    // update our child counter
+    ldr_l x0, active_children
+    add x0, x0, #1
+    str_l x0, active_children
+
     // clone()
     mov x8, SYS_clone
     mov x0, SIGCHLD
