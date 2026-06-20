@@ -432,8 +432,7 @@ read_failed:
     cmp x0, #1
     b.eq Lput_method
 
-    // oohhh, could it be a POST? that's a fancy one! (and not really
-    // implemented yet... TODO i guess)
+    // oohhh, could it be a POST? that's a fancy one!
     adr_l x0, buf
     adr_l x1, post_req
     mov x2, post_req_len
