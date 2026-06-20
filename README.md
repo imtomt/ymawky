@@ -1,19 +1,23 @@
 ![](docs/ymawky.png)
 
 # *ymawky* -- web server in ARM assembly
-This is *ymawky* (yuh maw kee), a web server written entirely in ARM64 assembly. ymawky is a syscall-only, no libc, fork-per-connection web server written by hand. While it is developed for MacOS, I've tried to make it as portable as possible -- *however*, it's likely you will still need to make some ~~(hopefully minor)~~ Significant tweaks to get this to run on Linux/other Unix systems. See [Implementation Notes](#implementation-notes) for more details.
+This is *ymawky* (yuh maw kee), a web server written entirely in ARM64 assembly. ymawky is a syscall-only, no libc, fork-per-connection web server written by hand. While originally developed for MacOS, this branch is a fully-featured Linux port.
 
 ## Building
-Requires Xcode Command Line Tools. Install with `xcode-select --install`.
-ymawky only runs on apple silicon (arm64).
 
-Run `make` to build.
+### Build Commands
+To compile a stripped binary, run `make`.
+To compile a binary with debugging symbols, run `make debug`
 
-Ensure there is a `www/` directory next to the `ymawky` executable. That's the document root where *ymawky* searches for files.
+### Prerequisites
+ymawky requires `gcc` and `binutils` to assemble.
+
+Ensure there is a `www/` directory next to the `ymawky` executable. That's the document root where ymawky searches for files.
 `GET` with an empty filename (`GET /`) will search for `www/index.html`, so you might want to make sure there's an `index.html` as well.
 
 *ymawky* will try to serve static error pages when a client's request results in error, eg 404. The pages it searches for in `err/(code).html`, so ensure `err/` exists alongisde `ymawky` and `www/`.
 See [Configuration](#configuration) to modify the default file and docroot.
+
 
 ## Running
 - `./ymawky` to start running the web server on `127.0.0.1:8080`.
@@ -74,10 +78,10 @@ CGI, or Common Gateway Interface, is an interface specification that enables web
 
 ymawky supports query strings: everything after the `?` in URLs. So if you have a CGI script called `logbook`, you could send a request for `/cgi-bin/logbook?q=nice+job`, and ymawky will execute logbook with the `QUERY_STRING` environmental variable set to `q=nice+job`.
 
-# CGI Limitations
+### CGI Limitations
 CGI support in ymawky is limited. ymawky does not support `PATH_INFO`; in a request like `/blog/2024/01`, `blog` could be the executable path and `/2024/01` is passed in the `PATH_INFO` environmental variable. ymawky just treats every path as being a literal path, it would look for the file `/blog/2024/01`.
 
-# CGI Security note
+### CGI Security note
 CGI scripts can have their own vulnerabilities, since they're full programs on their own. They need to do their own error handling, input parsing, etc. What ymawky does is simple (in a manner of speaking): find the executable file, set some environmental variables, fork, execute the CGI script, and write HTTP content between the user and the CGI script.
 
 ## HTTP Status Codes
@@ -193,6 +197,8 @@ You can configure ymawky with the `config.S` file. The options are documented he
 - `.equ MAX_PROCS, 256` -- Maximum number of concurrent proccesses ymawky is allowed to run. Since ymawky is a fork-per-connection server, you want to ensure ymawky doesn't exhaust your PID space. ymawky will reply with `503 Service Unavailable`
 
 ## Implementation Notes
+
+
 ymawky is written for MacOS (sorry...). There are a few (well, more than a *few*) things that are MacOS-specific in this code that won't be portable.
 - Syscalls on MacOS use `x16` for the number and `svc #0x80` to call it. Linux uses `x8` and `svc #0`.
 - Error reporting is different. MacOS sets the carry flag on error, and puts `errno` in `x0`. Linux returns a negative value in `x0`, like `-ENOENT`. Ever `b.cs` would need to be replaced with `cmp x0, #0` / `b.lt ...`, and you'd negate `x0` to get errno.

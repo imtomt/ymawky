@@ -7,3 +7,4 @@ www/.*
 www/cgi-bin/*
 !www/cgi-bin/logbook
 !www/cgi-bin/envtest
+build/
