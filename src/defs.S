@@ -46,6 +46,34 @@
     b.\cond \l
 .endm
 
+// a macro to openat2()
+// set before use:
+// x0 -> dirfd (AT_FDCWD)
+// x1 -> filename
+// x2 -> flags
+// x3 -> mode
+// x4 -> resolve
+// openat2() requires a weird little fuckass `struct open_how` instead of just
+// OR'ing flags, and it's annoying. so here's a macro to set up the stack and
+// such.
+.macro open_no_symlink
+    mov x4, #RESOLVE_NO_XDEV
+    orr x4, x4, #RESOLVE_NO_SYMLINKS
+
+    sub sp, sp, #32
+    stp x2, x3, [sp]
+    str x4, [sp, #16]
+
+    mov x8, SYS_openat2
+    // x0 should be set by caller
+    // x1 should be set by caller
+    mov x2, sp
+    mov x3, #24
+    svc #0
+
+    add sp, sp, #32
+.endm
+
 
 // since Linux syscalls return -value instead of just setting the carry bit, we
 // can't just use b.cs after syscalls to check for errors. this macro just

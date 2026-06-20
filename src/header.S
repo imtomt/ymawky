@@ -477,21 +477,11 @@ reply_status:
     // gotta basically GET that shit. theoretically err_page_buf should be
     // guaranteed to be safe, BUT! what if it's not? can't be too careful. and
     // it's not really that much more intensive to use, so...
-    add sp, sp, #32
-    mov x0, #O_RDONLY
-    mov x1, #0
-    mov x2, #RESOLVE_NO_XDEV
-    orr x2, x2, #RESOLVE_NO_SYMLINKS
-    stp x0, x1, [sp]
-    str x2, [sp, #16]
-
-    mov x8, SYS_openat2
-    mov x0, AT_FDCWD
-    ldr_l x1, err_page_buf
-    mov x2, sp
-    mov x3, #24
-    svc #0
-    add sp, sp, #32
+    mov x0, #AT_FDCWD
+    ldr_l x1, filename_str
+    mov x2, #O_RDONLY
+    mov x3, #0
+    open_no_symlink
     b_err sc_err
     mov x23, x0 // save the fd
 

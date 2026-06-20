@@ -70,24 +70,12 @@ get_setup:
     bl check_cgi_path
     cbz x0, Lcgi // branch to cgi handler if so
 
-    // openat2() requires a weird little fucky weird struct thing instead of
-    // just OR'd flags
-    sub sp, sp, #32
-    mov x0, #O_RDONLY
-    mov x1, #0 // no mode flags since we're not creating a file
-    mov x2, #RESOLVE_NO_XDEV
-    orr x2, x2, #RESOLVE_NO_SYMLINKS
-    stp x0, x1, [sp] // write x0 and x1 to [sp], [sp, #8]
-    str x2, [sp, #16] // write x2 to [sp, #16]
-
-    mov x8, SYS_openat2
-    mov x0, AT_FDCWD
+    mov x0, #AT_FDCWD
     ldr_l x1, filename_str
-    mov x2, sp
-    mov x3, #24 // sizeof(struct open_how) is 24
-    svc #0
-    add sp, sp, #32
-    b_err Lhfs_err // if the carry flag is set, open() failed so handle it
+    mov x2, #O_RDONLY // flags
+    mov x3, #0 // mode = nothing bc we're not creating a file
+    open_no_symlink
+    b_err Lhfs_err // if the carry flag is set, openat2() failed so handle it
 
     // save the file descriptor
     str_l x0, file_des
