@@ -125,13 +125,13 @@ cgi:
     b_err L500
 
     // SYS_pipe()
-    mov x8, #SYS_pipe2
+    mov x8, SYS_pipe2
     adr_l x0, stdin_pipe
     mov x1, O_CLOEXEC
     svc #0
     b_err L500
 
-    mov x8, #SYS_pipe2
+    mov x8, SYS_pipe2
     adr_l x0, stdout_pipe
     mov x1, O_CLOEXEC
     svc #0
