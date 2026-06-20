@@ -11,7 +11,7 @@ LDFLAGS := -z noexecstack -z relro -z now -e _start --gc-sections -O2
 all: ymawky
 
 debug: LDFLAGS := -z noexecstack -z relro -z now -e _start
-debug: ASFLAGS := --warn --fatal-warnings --gdawrf-5
+debug: ASFLAGS := --warn --fatal-warnings --gdwarf-5
 debug: ymawky
 
 ymawky: $(OBJS)
