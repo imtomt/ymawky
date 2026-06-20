@@ -196,20 +196,6 @@ You can configure ymawky with the `config.S` file. The options are documented he
 - `.equ MAX_BODY_SIZE, 1024 * 1024 * 1024` -- Maximum bytes PUT allows for Content-Length. By default, 1GB (1024*1024*1024 = 1073741824 bytes). Files with a larger Content-Length larger than this will be rejected with `413 Content Too Large`
 - `.equ MAX_PROCS, 256` -- Maximum number of concurrent proccesses ymawky is allowed to run. Since ymawky is a fork-per-connection server, you want to ensure ymawky doesn't exhaust your PID space. ymawky will reply with `503 Service Unavailable`
 
-## Implementation Notes
-
-
-ymawky is written for MacOS (sorry...). There are a few (well, more than a *few*) things that are MacOS-specific in this code that won't be portable.
-- Syscalls on MacOS use `x16` for the number and `svc #0x80` to call it. Linux uses `x8` and `svc #0`.
-- Error reporting is different. MacOS sets the carry flag on error, and puts `errno` in `x0`. Linux returns a negative value in `x0`, like `-ENOENT`. Ever `b.cs` would need to be replaced with `cmp x0, #0` / `b.lt ...`, and you'd negate `x0` to get errno.
-- `fork()` works differently, MacOS puts 1 in `x1` in the child process, whereas Linux puts `0` in `x0`.
-- `SO_NOSIGPIPE` doesn't exist on Linux.
-- `O_NOFOLLOW_ANY` is also MacOS-specific.
-- `renameatx_np()` is also MacOS-specific. Linux has `renameat2()`, with different flag values.
-- Struct layouts and offsets will differ. The `stat64` struct, `itimerval` struct, and `sockaddr_in` struct, will all need to be reconsidered.
-- `adr xN, foo@PAGE` / `add xN, xN, foo@PAGEOFF` are Mach-O relocation operators. Linux ELF uses different syntax, like `:pg_hi21:` and `:lo12:`. The `adr_l`, `ldr_l` and `str_l` macros would need to be rewritten or replaced.
-- My personal favorite :3 Signal handling works differently on Linux and MacOS. MacOS's `sigaction` struct contains a `sa_tramp` field that the kernel jumps to before your handler. ymawky utilizes `sa_tramp` directly *as the handler itself*, skipping the libc trampoline and `sigreturn` entirely. Since the handler only sends a 408 and exits, without needing to return, that's fine and works wonderfully without libc. The `sigaction` call would need to be rewritten for POSIX systems.
-
 ### Special Thanks:
 - [asmhttpd](https://github.com/jcalvinowens/asmhttpd), an x86_64 Linux HTTP server, was a big inspiration
 - *Bob Johnson*
